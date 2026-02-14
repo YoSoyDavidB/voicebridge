@@ -154,6 +154,9 @@ class ElevenLabsTTSClient:
                     timeout=0.1,
                 )
 
+                # Debug: Show we received translation
+                print(f"[TTS] 🔊 Generating audio: \"{translation.translated_text}\"")
+
                 # Ensure connected
                 if self._ws is None:
                     await self.connect()
@@ -178,6 +181,7 @@ class ElevenLabsTTSClient:
 
                     # Stop receiving if final chunk
                     if response.get("isFinal", False):
+                        print(f"[TTS] ✅ Audio generation complete")
                         break
 
             except asyncio.TimeoutError:

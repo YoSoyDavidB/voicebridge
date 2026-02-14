@@ -156,6 +156,9 @@ class AudioOutput:
                     timeout=0.1,
                 )
 
+                # Debug: Show we received audio
+                print(f"[Output] 🔈 Playing audio chunk ({len(audio_result.audio_data)} bytes)")
+
                 # Write audio to output stream
                 await self._write_audio(audio_result)
 

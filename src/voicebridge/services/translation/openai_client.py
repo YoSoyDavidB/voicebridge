@@ -110,11 +110,15 @@ CRITICAL RULES:
                     timeout=0.1,
                 )
 
+                # Debug: Show we received transcript
+                print(f"[Translation] 📥 Received: \"{transcript.text}\"")
+
                 # Translate
                 start_time = time.monotonic()
                 translation = await self._translate_text(transcript.text, start_time)
 
                 if translation is not None:
+                    print(f"[Translation] 🌍 Translated: \"{translation.translated_text}\"")
                     await self._output_queue.put(translation)
 
             except asyncio.TimeoutError:

@@ -141,6 +141,9 @@ class DeepgramSTTClient:
                     timeout=0.1,
                 )
 
+                # Debug: Show we received audio
+                print(f"[STT] 🎧 Received audio: {vad_result.duration_ms:.0f}ms")
+
                 # Ensure connected
                 if self._ws is None:
                     await self.connect()
@@ -156,6 +159,7 @@ class DeepgramSTTClient:
                 # Parse and forward result
                 transcript = self._parse_deepgram_response(response, start_time)
                 if transcript is not None:
+                    print(f"[STT] 📝 Transcript: \"{transcript.text}\" (confidence={transcript.confidence:.2f})")
                     await self._output_queue.put(transcript)
 
             except asyncio.TimeoutError:

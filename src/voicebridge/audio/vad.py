@@ -130,6 +130,10 @@ class VADProcessor:
                 # Detect speech
                 is_speech = self._is_speech(chunk)
 
+                # Debug: Show speech detection
+                if is_speech and len(self._speech_buffer) == 0:
+                    print(f"[VAD] 🎤 Speech started")
+
                 if is_speech:
                     # Add to speech buffer
                     self._add_speech_chunk(chunk)
@@ -147,6 +151,7 @@ class VADProcessor:
                     # Check if we should emit utterance
                     if self._should_emit_utterance():
                         result = self._create_vad_result(is_partial=False)
+                        print(f"[VAD] ✅ Utterance complete: {len(self._speech_buffer)} chunks, {result.duration_ms:.0f}ms, confidence={result.confidence:.2f}")
                         await self._output_queue.put(result)
                         self._reset_buffer()
 
