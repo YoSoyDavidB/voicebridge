@@ -105,3 +105,40 @@ class TTSAudioResult:
     start_timestamp_ms: float
     processing_latency_ms: float
     sequence_number: int
+
+
+@dataclass(frozen=True)
+class ComponentStatus:
+    """Status of a pipeline component."""
+
+    name: str
+    is_running: bool
+    queue_depth: int
+    last_error: Optional[str]
+    avg_processing_time_ms: float
+
+
+@dataclass(frozen=True)
+class PipelineHealth:
+    """Overall pipeline health status."""
+
+    is_healthy: bool
+    component_statuses: dict[str, ComponentStatus]
+    uptime_seconds: float
+    total_utterances_processed: int
+    average_latency_ms: float
+
+
+@dataclass(frozen=True)
+class PipelineMetrics:
+    """Pipeline performance metrics."""
+
+    total_latency_ms: float
+    capture_latency_ms: float
+    vad_latency_ms: float
+    stt_latency_ms: float
+    translation_latency_ms: float
+    tts_latency_ms: float
+    output_latency_ms: float
+    queue_depths: dict[str, int]
+    timestamp: float
