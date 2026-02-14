@@ -88,6 +88,8 @@ async def run_pipeline() -> None:
         click.echo(click.style("✓ Configuration loaded", fg="green"))
 
         click.echo("Creating pipeline...")
+        click.echo("  - Initializing components...")
+        click.echo("  - Loading VAD model (this may take a moment on first run)...")
         pipeline = PipelineOrchestrator(settings=settings)
         click.echo(click.style("✓ Pipeline created", fg="green"))
 

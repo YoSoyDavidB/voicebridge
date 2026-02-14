@@ -145,7 +145,17 @@ class AudioCapture:
         chunk = self._create_audio_chunk(indata, timestamp_s)
 
         # Push to queue (thread-safe)
-        self._loop.call_soon_threadsafe(self._output_queue.put_nowait, chunk)
+        # If queue is full, drop oldest chunk to avoid blocking capture
+        try:
+            self._loop.call_soon_threadsafe(self._output_queue.put_nowait, chunk)
+        except Exception:
+            # Queue is full, try to drop oldest and add new
+            try:
+                self._loop.call_soon_threadsafe(self._output_queue.get_nowait)
+                self._loop.call_soon_threadsafe(self._output_queue.put_nowait, chunk)
+            except Exception:
+                # If still fails, just drop this chunk
+                pass
 
     def _create_audio_chunk(self, data: bytes, timestamp_s: float) -> AudioChunk:
         """Create an AudioChunk from raw audio data.
