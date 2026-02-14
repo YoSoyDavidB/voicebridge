@@ -6,6 +6,8 @@ Values are type-validated at startup using Pydantic.
 
 from __future__ import annotations
 
+from typing import Optional
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -47,11 +49,11 @@ class VoiceBridgeSettings(BaseSettings):
     )
 
     # ─── Audio Configuration ─────────────────────────────────────
-    audio_input_device_id: int | None = Field(
+    audio_input_device_id: Optional[int] = Field(
         default=None,
         description="Input device ID (None = system default)",
     )
-    audio_output_device_id: int | None = Field(
+    audio_output_device_id: Optional[int] = Field(
         default=None,
         description="Output device ID (None = system default)",
     )

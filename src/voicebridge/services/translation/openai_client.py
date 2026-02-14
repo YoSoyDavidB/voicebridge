@@ -5,6 +5,8 @@ Uses GPT-4o-mini for fast, high-quality conversational translation.
 
 from __future__ import annotations
 
+from typing import Optional
+
 import asyncio
 import time
 
@@ -57,8 +59,8 @@ CRITICAL RULES:
 10. For numbers, dates, and measurements, use the English convention."""
 
         # State
-        self._input_queue: asyncio.Queue[TranscriptResult] | None = None
-        self._output_queue: asyncio.Queue[TranslationResult] | None = None
+        self._input_queue: Optional[asyncio.Queue[TranscriptResult]] = None
+        self._output_queue: Optional[asyncio.Queue[TranslationResult]] = None
         self._sequence_number = 0
         self._is_running = False
 

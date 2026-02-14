@@ -6,6 +6,8 @@ into utterances for transcription.
 
 from __future__ import annotations
 
+from typing import Optional
+
 import asyncio
 from typing import Any
 
@@ -31,7 +33,7 @@ class VADProcessor:
         min_silence_duration_ms: int,
         speech_pad_ms: int,
         max_utterance_duration_ms: int,
-        model: Any | None = None,
+        model: Optional[Any] = None,
     ) -> None:
         """Initialize VAD processor.
 
@@ -52,8 +54,8 @@ class VADProcessor:
         self.max_utterance_duration_ms = max_utterance_duration_ms
 
         # State
-        self._input_queue: asyncio.Queue[AudioChunk] | None = None
-        self._output_queue: asyncio.Queue[VADResult] | None = None
+        self._input_queue: Optional[asyncio.Queue[AudioChunk]] = None
+        self._output_queue: Optional[asyncio.Queue[VADResult]] = None
         self._speech_buffer: list[AudioChunk] = []
         self._speech_probabilities: list[float] = []
         self._speech_start_ms: float = 0.0

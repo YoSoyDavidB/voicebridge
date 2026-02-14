@@ -2,7 +2,7 @@
 name = "voicebridge"
 version = "1.0.0"
 description = "Real-time Spanish-to-English voice interpreter for Microsoft Teams"
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 authors = [
     {name = "VoiceBridge Team"}
 ]

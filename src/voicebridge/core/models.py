@@ -6,10 +6,12 @@ This is critical for low-latency performance when processing many audio chunks.
 
 from __future__ import annotations
 
+from typing import Optional
+
 from dataclasses import dataclass
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class AudioChunk:
     """Raw audio chunk from microphone capture.
 
@@ -25,7 +27,7 @@ class AudioChunk:
     sequence_number: int
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class VADResult:
     """Voice activity detection result containing speech audio.
 
@@ -42,7 +44,7 @@ class VADResult:
     sequence_number: int
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class WordInfo:
     """Word-level timing and confidence information.
 
@@ -55,7 +57,7 @@ class WordInfo:
     confidence: float
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class TranscriptResult:
     """Speech-to-text transcription result.
 
@@ -69,11 +71,11 @@ class TranscriptResult:
     start_timestamp_ms: float
     processing_latency_ms: float
     language: str
-    words: list[WordInfo] | None
+    words: Optional[list[WordInfo]]
     sequence_number: int
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class TranslationResult:
     """Translation result from Spanish to English.
 
@@ -88,7 +90,7 @@ class TranslationResult:
     sequence_number: int
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class TTSAudioResult:
     """Synthesized audio from TTS service.
 
@@ -99,7 +101,7 @@ class TTSAudioResult:
     audio_data: bytes
     sample_rate: int
     channels: int
-    is_partial: bool
+    is_final: bool
     start_timestamp_ms: float
     processing_latency_ms: float
     sequence_number: int

@@ -16,10 +16,10 @@ help:
 	@echo "run              - Run VoiceBridge application"
 
 install:
-	pip install -e .
+	pip3 install -e .
 
 install-dev:
-	pip install -e ".[dev,test]"
+	pip3 install -e ".[dev,test]"
 
 test:
 	pytest -m unit

@@ -6,6 +6,8 @@ to an asyncio queue for processing by the VAD component.
 
 from __future__ import annotations
 
+from typing import Optional
+
 import asyncio
 import time
 from typing import Any
@@ -28,7 +30,7 @@ class AudioCapture:
         sample_rate: int,
         channels: int,
         chunk_duration_ms: int,
-        device_id: int | None = None,
+        device_id: Optional[int] = None,
     ) -> None:
         """Initialize audio capture.
 
@@ -47,10 +49,10 @@ class AudioCapture:
         self._chunk_size = int(sample_rate * chunk_duration_ms / 1000)
 
         # State
-        self._stream: sd.RawInputStream | None = None
-        self._output_queue: asyncio.Queue[AudioChunk] | None = None
+        self._stream: Optional[sd.RawInputStream] = None
+        self._output_queue: Optional[asyncio.Queue[AudioChunk]] = None
         self._sequence_number = 0
-        self._loop: asyncio.AbstractEventLoop | None = None
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
 
     def set_output_queue(self, queue: asyncio.Queue[AudioChunk]) -> None:
         """Set the queue where captured audio chunks will be pushed.

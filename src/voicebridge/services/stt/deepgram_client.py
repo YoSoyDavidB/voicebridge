@@ -5,6 +5,8 @@ Provides real-time transcription of Spanish audio to text with low latency.
 
 from __future__ import annotations
 
+from typing import Optional
+
 import asyncio
 import json
 import time
@@ -45,8 +47,8 @@ class DeepgramSTTClient:
 
         # State
         self._ws: Any = None
-        self._input_queue: asyncio.Queue[VADResult] | None = None
-        self._output_queue: asyncio.Queue[TranscriptResult] | None = None
+        self._input_queue: Optional[asyncio.Queue[VADResult]] = None
+        self._output_queue: Optional[asyncio.Queue[TranscriptResult]] = None
         self._sequence_number = 0
         self._is_running = False
 
