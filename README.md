@@ -30,12 +30,12 @@ Physical Mic → Audio Capture → VAD → STT (Deepgram) → Translation (GPT-4
 
 ## 📋 Prerequisites
 
-- Python 3.11 or higher
+- Python 3.9 or higher
 - API keys for:
   - Deepgram (Speech-to-Text)
   - OpenAI (Translation)
   - ElevenLabs (Text-to-Speech with voice cloning)
-- Virtual audio device:
+- Virtual audio device (optional for Teams integration):
   - Windows: VB-Audio Virtual Cable
   - macOS: BlackHole
 
@@ -45,8 +45,8 @@ Physical Mic → Audio Capture → VAD → STT (Deepgram) → Translation (GPT-4
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd VoiceBridge
+git clone https://github.com/YoSoyDavidB/voicebridge.git
+cd voicebridge
 
 # Install development dependencies
 make install-dev
@@ -56,6 +56,38 @@ cp .env.example .env
 
 # Edit .env with your API keys
 nano .env
+```
+
+### Usage
+
+**Option 1: Using the helper script (recommended)**
+```bash
+# Check your configuration
+./voicebridge.sh check
+
+# List available audio devices
+./voicebridge.sh devices
+
+# Run VoiceBridge
+./voicebridge.sh
+
+# Show help
+./voicebridge.sh --help
+```
+
+**Option 2: Direct Python command**
+```bash
+# Check your configuration
+python3 -m voicebridge check
+
+# List available audio devices
+python3 -m voicebridge devices
+
+# Run VoiceBridge
+python3 -m voicebridge
+
+# Show help
+python3 -m voicebridge --help
 ```
 
 ### Development
