@@ -33,7 +33,7 @@ class VoiceBridgeSettings(BaseSettings):
 
     # ─── Voice Configuration ─────────────────────────────────────
     elevenlabs_voice_id: str = Field(..., description="Cloned voice ID from ElevenLabs")
-    tts_model: str = Field(default="eleven_turbo_v2_5", description="TTS model to use")
+    elevenlabs_model: str = Field(default="eleven_turbo_v2_5", description="TTS model to use")
     tts_stability: float = Field(default=0.5, ge=0.0, le=1.0, description="Voice stability (0-1)")
     tts_similarity_boost: float = Field(
         default=0.8,
@@ -58,17 +58,20 @@ class VoiceBridgeSettings(BaseSettings):
         description="Output device ID (None = system default)",
     )
     audio_sample_rate: int = Field(default=16000, description="Audio sample rate in Hz")
+    audio_channels: int = Field(default=1, description="Number of audio channels (1=mono, 2=stereo)")
     audio_chunk_duration_ms: int = Field(default=30, description="Chunk duration in milliseconds")
+    output_buffer_size_ms: int = Field(default=50, description="Output buffer size in milliseconds")
+    tts_output_sample_rate: int = Field(default=24000, description="TTS output sample rate in Hz")
 
     # ─── STT Configuration ───────────────────────────────────────
     stt_provider: str = Field(default="deepgram", description="STT provider to use")
-    stt_language: str = Field(default="es", description="Source language code")
-    stt_model: str = Field(default="nova-2", description="STT model name")
+    deepgram_language: str = Field(default="es", description="Source language code")
+    deepgram_model: str = Field(default="nova-2", description="STT model name")
 
     # ─── Translation Configuration ───────────────────────────────
     translation_provider: str = Field(default="openai", description="Translation provider")
-    translation_model: str = Field(default="gpt-4o-mini", description="Translation model")
-    translation_temperature: float = Field(
+    openai_model: str = Field(default="gpt-4o-mini", description="Translation model")
+    openai_temperature: float = Field(
         default=0.3,
         ge=0.0,
         le=2.0,
@@ -82,11 +85,19 @@ class VoiceBridgeSettings(BaseSettings):
         le=1.0,
         description="Speech probability threshold",
     )
-    vad_min_silence_ms: int = Field(
+    vad_min_speech_duration_ms: int = Field(
+        default=250,
+        description="Minimum speech duration to consider (ms)",
+    )
+    vad_min_silence_duration_ms: int = Field(
         default=300,
         description="Minimum silence duration to end utterance (ms)",
     )
-    vad_max_utterance_ms: int = Field(
+    vad_speech_pad_ms: int = Field(
+        default=100,
+        description="Padding around speech segments (ms)",
+    )
+    vad_max_utterance_duration_ms: int = Field(
         default=15000,
         description="Maximum utterance duration before force-split (ms)",
     )
