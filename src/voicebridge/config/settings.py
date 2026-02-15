@@ -68,7 +68,7 @@ class VoiceBridgeSettings(BaseSettings):
     )
     audio_sample_rate: int = Field(default=16000, description="Audio sample rate in Hz")
     audio_channels: int = Field(default=1, description="Number of audio channels (1=mono, 2=stereo)")
-    audio_chunk_duration_ms: int = Field(default=30, description="Chunk duration in milliseconds")
+    audio_chunk_duration_ms: int = Field(default=20, description="Chunk duration in milliseconds (optimized)")
     output_buffer_size_ms: int = Field(default=50, description="Output buffer size in milliseconds")
     tts_output_sample_rate: int = Field(default=24000, description="TTS output sample rate in Hz")
 
@@ -87,24 +87,24 @@ class VoiceBridgeSettings(BaseSettings):
         description="Translation temperature (0-2)",
     )
 
-    # ─── VAD Configuration ───────────────────────────────────────
+    # ─── VAD Configuration (Optimized for low latency) ──────────────
     vad_threshold: float = Field(
-        default=0.5,
+        default=0.07,
         ge=0.0,
         le=1.0,
-        description="Speech probability threshold",
+        description="Speech probability threshold (optimized)",
     )
     vad_min_speech_duration_ms: int = Field(
         default=250,
         description="Minimum speech duration to consider (ms)",
     )
     vad_min_silence_duration_ms: int = Field(
-        default=300,
-        description="Minimum silence duration to end utterance (ms)",
+        default=80,
+        description="Minimum silence duration to end utterance (ms) (optimized)",
     )
     vad_speech_pad_ms: int = Field(
-        default=100,
-        description="Padding around speech segments (ms)",
+        default=50,
+        description="Padding around speech segments (ms) (optimized)",
     )
     vad_max_utterance_duration_ms: int = Field(
         default=15000,

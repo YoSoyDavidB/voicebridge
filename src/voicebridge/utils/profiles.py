@@ -10,6 +10,39 @@ from pathlib import Path
 from typing import Optional
 
 import click
+import sounddevice as sd
+
+
+def find_virtual_audio_device() -> Optional[int]:
+    """Auto-detect virtual audio device (BlackHole or VB-CABLE).
+
+    Returns:
+        Device ID if found, None otherwise
+    """
+    try:
+        devices = sd.query_devices()
+
+        # Search for known virtual devices
+        virtual_keywords = [
+            'blackhole',
+            'vb-cable',
+            'cable input',
+            'vb-audio',
+            'soundflower',
+        ]
+
+        for i, device in enumerate(devices):
+            if device['max_output_channels'] == 0:
+                continue  # Skip input-only devices
+
+            name_lower = device['name'].lower()
+            for keyword in virtual_keywords:
+                if keyword in name_lower:
+                    return i
+
+        return None
+    except Exception:
+        return None
 
 
 def get_env_path() -> Path:
@@ -81,12 +114,13 @@ def write_env(env_vars: dict[str, str]) -> None:
         f.writelines(updated_lines)
 
 
-def apply_profile(profile: str, output_device_id: Optional[int] = None) -> None:
+def apply_profile(profile: str, output_device_id: Optional[int] = None, auto_detect: bool = False) -> None:
     """Apply a configuration profile.
 
     Args:
         profile: Either 'testing' or 'teams'
         output_device_id: Optional device ID for virtual audio device (Teams mode)
+        auto_detect: Auto-detect virtual device (Teams mode)
     """
     env_vars = read_env()
 
@@ -100,12 +134,26 @@ def apply_profile(profile: str, output_device_id: Optional[int] = None) -> None:
 
     elif profile == "teams":
         # Teams mode: silent, send to virtual device
+        if auto_detect:
+            # Try to auto-detect virtual device
+            detected_id = find_virtual_audio_device()
+            if detected_id is not None:
+                output_device_id = detected_id
+                click.echo(click.style(f"✓ Auto-detected virtual device: ID {detected_id}", fg="cyan"))
+            else:
+                click.echo(click.style("⚠ Could not auto-detect virtual device", fg="yellow"))
+                click.echo("Please install BlackHole (macOS) or VB-CABLE (Windows)")
+                click.echo("Or specify device manually: voicebridge profile teams --device <ID>")
+                return
+
         if output_device_id is not None:
             env_vars["AUDIO_OUTPUT_DEVICE_ID"] = str(output_device_id)
         elif "AUDIO_OUTPUT_DEVICE_ID" not in env_vars or not env_vars["AUDIO_OUTPUT_DEVICE_ID"]:
             click.echo(click.style("⚠ Warning: No virtual device configured", fg="yellow"))
-            click.echo("Run 'voicebridge devices' to find your virtual device ID")
-            click.echo("Then run: voicebridge profile teams --device <ID>")
+            click.echo("Options:")
+            click.echo("  1. Auto-detect: voicebridge profile teams --auto")
+            click.echo("  2. Manual: voicebridge profile teams --device <ID>")
+            click.echo("Run 'voicebridge devices' to see available devices")
             return
 
         env_vars["AUDIO_OUTPUT_ENABLED"] = "false"
