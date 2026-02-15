@@ -178,6 +178,12 @@ class VADProcessor:
         # Convert bytes to numpy array
         audio_array = np.frombuffer(chunk.data, dtype=np.int16)
 
+        # Pad short chunks to satisfy Silero minimum length (~512 samples @ 16kHz)
+        min_samples = int(self.sample_rate / 31.25)
+        if audio_array.size < min_samples:
+            pad_width = min_samples - audio_array.size
+            audio_array = np.pad(audio_array, (0, pad_width), mode="constant")
+
         # Convert to float32 and normalize to [-1, 1]
         audio_float = audio_array.astype(np.float32) / 32768.0
 

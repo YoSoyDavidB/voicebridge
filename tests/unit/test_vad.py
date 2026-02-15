@@ -37,6 +37,48 @@ class TestVADProcessorInitialization:
 class TestVADProcessorSpeechDetection:
     """Test speech detection functionality."""
 
+    def test_pads_short_chunks_for_model(self) -> None:
+        """VAD should pad short chunks to satisfy model minimum length."""
+
+        class ShortChunkModel:
+            def __init__(self) -> None:
+                self.called = False
+                self.last_len = 0
+
+            def __call__(self, audio_tensor, sample_rate):  # type: ignore[no-untyped-def]
+                self.called = True
+                self.last_len = int(audio_tensor.shape[0])
+                if self.last_len < 512:
+                    raise ValueError("Input audio chunk is too short")
+                return 0.6
+
+        mock_model = ShortChunkModel()
+
+        vad = VADProcessor(
+            sample_rate=16000,
+            threshold=0.5,
+            min_speech_duration_ms=250,
+            min_silence_duration_ms=300,
+            speech_pad_ms=100,
+            max_utterance_duration_ms=15000,
+            model=mock_model,
+        )
+
+        chunk = AudioChunk(
+            data=b"\x00" * (480 * 2),
+            timestamp_ms=0.0,
+            sample_rate=16000,
+            channels=1,
+            duration_ms=30.0,
+            sequence_number=0,
+        )
+
+        is_speech = vad._is_speech(chunk)
+
+        assert is_speech is True
+        assert mock_model.called is True
+        assert mock_model.last_len >= 512
+
     @pytest.mark.asyncio
     async def test_detects_speech(self, speech_audio_data: bytes) -> None:
         """VAD should detect speech in audio with speech content."""
