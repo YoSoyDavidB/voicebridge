@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from voicebridge.audio.local_output import LocalSpeakerOutput
 from voicebridge.config.settings import VoiceBridgeSettings
 from voicebridge.core.pipeline import PipelineOrchestrator
+from voicebridge.core.models import TTSAudioResult
 
 
 def log_latency(stage: str, latency_ms: float) -> str:
@@ -32,7 +33,12 @@ def create_cli_pipeline() -> PipelineOrchestrator:
         channels=1,
     )
     local_output.start()
-    pipeline.set_tts_output_callback(local_output.enqueue)
+
+    def _tts_callback(result: TTSAudioResult) -> None:
+        log_latency("tts", result.processing_latency_ms)
+        local_output.enqueue(result.audio_data)
+
+    pipeline.set_tts_output_callback(_tts_callback)
     return pipeline
 
 

@@ -57,7 +57,7 @@ class PipelineOrchestrator:
         self._audio_output: Optional[AudioOutput] = None
 
         # Optional callback for TTS output
-        self._tts_output_callback: Optional[Callable[[bytes], Any]] = None
+        self._tts_output_callback: Optional[Callable[[TTSAudioResult], Any]] = None
 
         # Queues
         self._queue_capture_to_vad: Optional[asyncio.Queue[AudioChunk]] = None
@@ -69,11 +69,11 @@ class PipelineOrchestrator:
         # Component tasks
         self._tasks: list[asyncio.Task[Any]] = []
 
-    def set_tts_output_callback(self, callback: Callable[[bytes], Any]) -> None:
+    def set_tts_output_callback(self, callback: Callable[[TTSAudioResult], Any]) -> None:
         """Set callback for TTS audio output.
 
         Args:
-            callback: Function that accepts raw PCM audio bytes
+            callback: Function that accepts a TTSAudioResult
         """
         self._tts_output_callback = callback
 
@@ -201,7 +201,7 @@ class PipelineOrchestrator:
                 continue
 
             try:
-                result = self._tts_output_callback(tts_result.audio_data)
+                result = self._tts_output_callback(tts_result)
                 if inspect.isawaitable(result):
                     await result
             except Exception as e:
