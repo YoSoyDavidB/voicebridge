@@ -26,10 +26,11 @@ class WebSocketClient {
                 this.ws = new WebSocket(wsUrl);
 
                 this.ws.onopen = () => {
-                    console.log('WebSocket connected');
+                    console.log('[WebSocket] Connection opened');
                     this.reconnectAttempts = 0;
 
                     // Send configuration message
+                    console.log('[WebSocket] Sending config...');
                     this.sendConfig(config);
 
                     if (this.onStatusChange) {
@@ -51,8 +52,8 @@ class WebSocketClient {
                     reject(error);
                 };
 
-                this.ws.onclose = () => {
-                    console.log('WebSocket disconnected');
+                this.ws.onclose = (event) => {
+                    console.log(`[WebSocket] Connection closed: code=${event.code}, reason=${event.reason}, clean=${event.wasClean}`);
 
                     if (this.onStatusChange) {
                         this.onStatusChange('disconnected');
@@ -98,6 +99,7 @@ class WebSocketClient {
             timestamp: Date.now()
         };
 
+        console.log(`[WebSocket] Sending audio message: ${audioBase64.length} bytes`);
         this.send(message);
     }
 

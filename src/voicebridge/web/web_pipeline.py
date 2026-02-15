@@ -148,13 +148,15 @@ class WebPipeline:
             audio_chunk: Audio chunk from browser
         """
         if not self._is_running or not self._queue_input:
-            logger.warning("Pipeline not running, dropping audio chunk")
+            logger.warning("[WebPipeline] Pipeline not running, dropping audio chunk")
             return
 
         try:
+            logger.debug(f"[WebPipeline] Putting chunk in input queue (qsize={self._queue_input.qsize()})")
             await self._queue_input.put(audio_chunk)
+            logger.debug(f"[WebPipeline] Chunk added to queue (qsize={self._queue_input.qsize()})")
         except asyncio.QueueFull:
-            logger.warning("Input queue full, dropping audio chunk")
+            logger.warning("[WebPipeline] Input queue full, dropping audio chunk")
 
     async def _process_tts_output(self) -> None:
         """Process TTS output and send to browser via callback."""

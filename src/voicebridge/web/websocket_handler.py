@@ -147,11 +147,15 @@ class WebSocketHandler:
             Requires config to be sent first. Audio is decoded and will be
             passed to pipeline for processing.
         """
+        logger.debug(f"[WebSocket] Received audio message: {len(str(data))} bytes")
+
         # Check if config has been received and pipeline is running
         if self._config is None:
+            logger.warning("[WebSocket] No config - rejecting audio")
             return self._error_response("Configuration required before sending audio")
 
         if self._pipeline is None:
+            logger.warning("[WebSocket] No pipeline - rejecting audio")
             return self._error_response("Pipeline not initialized")
 
         # Get audio data and timestamp
@@ -159,20 +163,25 @@ class WebSocketHandler:
         timestamp_ms = data.get("timestamp")
 
         if not base64_audio:
+            logger.warning("[WebSocket] Missing 'audio' field")
             return self._error_response("Missing 'audio' field")
         if timestamp_ms is None:
+            logger.warning("[WebSocket] Missing 'timestamp' field")
             return self._error_response("Missing 'timestamp' field")
+
+        logger.debug(f"[WebSocket] Audio data: {len(base64_audio)} base64 chars, timestamp={timestamp_ms}")
 
         # Decode audio to AudioChunk
         try:
             audio_chunk = self._audio_bridge.decode_web_audio(base64_audio, timestamp_ms)
-            logger.debug(
-                f"Decoded audio chunk: {audio_chunk.duration_ms:.1f}ms, "
-                f"seq={audio_chunk.sequence_number}"
+            logger.info(
+                f"[WebSocket] Decoded audio chunk: {audio_chunk.duration_ms:.1f}ms, "
+                f"seq={audio_chunk.sequence_number}, {len(audio_chunk.data)} samples"
             )
 
             # Send to pipeline for processing
             await self._pipeline.process_audio_chunk(audio_chunk)
+            logger.debug(f"[WebSocket] Sent chunk to pipeline queue")
 
         except Exception as e:
             logger.error(f"Error processing audio: {e}", exc_info=True)
