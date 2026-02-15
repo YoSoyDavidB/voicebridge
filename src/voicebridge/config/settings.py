@@ -62,6 +62,10 @@ class VoiceBridgeSettings(BaseSettings):
         default=None,
         description="Output device ID (None = system default)",
     )
+    audio_output_enabled: bool = Field(
+        default=True,
+        description="Enable audio playback (False = silent mode for Teams/Zoom)",
+    )
     audio_sample_rate: int = Field(default=16000, description="Audio sample rate in Hz")
     audio_channels: int = Field(default=1, description="Number of audio channels (1=mono, 2=stereo)")
     audio_chunk_duration_ms: int = Field(default=30, description="Chunk duration in milliseconds")
