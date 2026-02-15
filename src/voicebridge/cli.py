@@ -10,6 +10,10 @@ from voicebridge.config.settings import VoiceBridgeSettings
 from voicebridge.core.pipeline import PipelineOrchestrator
 
 
+def log_latency(stage: str, latency_ms: float) -> str:
+    return f"[Latency] {stage}={latency_ms:.1f}ms"
+
+
 def create_cli_pipeline() -> PipelineOrchestrator:
     try:
         settings = VoiceBridgeSettings()

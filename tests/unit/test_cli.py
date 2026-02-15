@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from voicebridge.cli import create_cli_pipeline
+from voicebridge.cli import create_cli_pipeline, log_latency
 
 
 def test_cli_wires_local_output(monkeypatch) -> None:
@@ -13,3 +13,9 @@ def test_cli_wires_local_output(monkeypatch) -> None:
     assert pipeline is not None
     fake_constructor.assert_called_once_with(sample_rate=48000, channels=1)
     fake_output.start.assert_called_once()
+
+
+def test_log_latency_formats_output() -> None:
+    msg = log_latency("stt", 123.4)
+    assert "stt" in msg
+    assert "123.4" in msg
