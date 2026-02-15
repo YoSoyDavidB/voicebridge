@@ -312,6 +312,30 @@ class TestDeepgramSTTClientTranscription:
         mock_ws.send.assert_any_call(vad_result.audio_data)
         mock_ws.send.assert_any_call(json.dumps({"type": "CloseStream"}))
 
+    @pytest.mark.asyncio
+    async def test_final_transcript_timeout(self) -> None:
+        """Should return None when no final transcript arrives in time."""
+        mock_ws = AsyncMock()
+
+        async def slow_recv() -> str:
+            await asyncio.sleep(0.05)
+            return json.dumps({"type": "Results", "is_final": False})
+
+        mock_ws.recv = AsyncMock(side_effect=slow_recv)
+
+        client = DeepgramSTTClient(
+            api_key="test_key",
+            language="es",
+            model="nova-2",
+            sample_rate=16000,
+            finalization_timeout_s=0.01,
+        )
+        client._ws = mock_ws
+
+        result = await client._receive_final_transcript(start_time=0.0)
+
+        assert result is None
+
 
 class TestDeepgramSTTClientQueue:
     """Test queue management."""
