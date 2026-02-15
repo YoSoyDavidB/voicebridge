@@ -152,9 +152,9 @@ class WebPipeline:
             return
 
         try:
-            logger.debug(f"[WebPipeline] Putting chunk in input queue (qsize={self._queue_input.qsize()})")
+            logger.info(f"[WebPipeline] Putting chunk in input queue (qsize={self._queue_input.qsize()})")
             await self._queue_input.put(audio_chunk)
-            logger.debug(f"[WebPipeline] Chunk added to queue (qsize={self._queue_input.qsize()})")
+            logger.info(f"[WebPipeline] Chunk added to queue (qsize={self._queue_input.qsize()})")
         except asyncio.QueueFull:
             logger.warning("[WebPipeline] Input queue full, dropping audio chunk")
 

@@ -147,7 +147,7 @@ class WebSocketHandler:
             Requires config to be sent first. Audio is decoded and will be
             passed to pipeline for processing.
         """
-        logger.debug(f"[WebSocket] Received audio message: {len(str(data))} bytes")
+        logger.info(f"[WebSocket] Received audio message: {len(str(data))} bytes")
 
         # Check if config has been received and pipeline is running
         if self._config is None:
@@ -169,7 +169,7 @@ class WebSocketHandler:
             logger.warning("[WebSocket] Missing 'timestamp' field")
             return self._error_response("Missing 'timestamp' field")
 
-        logger.debug(f"[WebSocket] Audio data: {len(base64_audio)} base64 chars, timestamp={timestamp_ms}")
+        logger.info(f"[WebSocket] Audio data: {len(base64_audio)} base64 chars, timestamp={timestamp_ms}")
 
         # Decode audio to AudioChunk
         try:
@@ -181,7 +181,7 @@ class WebSocketHandler:
 
             # Send to pipeline for processing
             await self._pipeline.process_audio_chunk(audio_chunk)
-            logger.debug(f"[WebSocket] Sent chunk to pipeline queue")
+            logger.info(f"[WebSocket] Sent chunk to pipeline queue")
 
         except Exception as e:
             logger.error(f"Error processing audio: {e}", exc_info=True)
