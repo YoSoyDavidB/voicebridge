@@ -14,7 +14,7 @@ def test_local_output_writes_bytes_to_stream(monkeypatch) -> None:
     def fake_output_stream(*args, **kwargs):
         return fake_stream
 
-    monkeypatch.setattr("voicebridge.audio.local_output.sd.OutputStream", fake_output_stream)
+    monkeypatch.setattr("voicebridge.audio.local_output.sd.RawOutputStream", fake_output_stream)
 
     output = LocalSpeakerOutput(sample_rate=22050, channels=1)
     output.start()
@@ -33,7 +33,7 @@ def test_local_output_stops_and_closes_stream(monkeypatch) -> None:
     def fake_output_stream(*args, **kwargs):
         return fake_stream
 
-    monkeypatch.setattr("voicebridge.audio.local_output.sd.OutputStream", fake_output_stream)
+    monkeypatch.setattr("voicebridge.audio.local_output.sd.RawOutputStream", fake_output_stream)
 
     output = LocalSpeakerOutput(sample_rate=22050, channels=1)
     output.start()
@@ -53,7 +53,7 @@ async def test_local_output_enqueue_async_writes_bytes(monkeypatch) -> None:
     def fake_output_stream(*args, **kwargs):
         return fake_stream
 
-    monkeypatch.setattr("voicebridge.audio.local_output.sd.OutputStream", fake_output_stream)
+    monkeypatch.setattr("voicebridge.audio.local_output.sd.RawOutputStream", fake_output_stream)
 
     output = LocalSpeakerOutput(sample_rate=22050, channels=1)
     await output.enqueue_async(b"\x00\x01" * 10)

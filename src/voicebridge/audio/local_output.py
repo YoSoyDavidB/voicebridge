@@ -10,16 +10,16 @@ import sounddevice as sd
 class LocalSpeakerOutput:
     sample_rate: int
     channels: int
-    _stream: sd.OutputStream = field(init=False, repr=False)
+    _stream: sd.RawOutputStream = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(
             self,
             "_stream",
-            sd.OutputStream(
-            samplerate=self.sample_rate,
-            channels=self.channels,
-            dtype="int16",
+            sd.RawOutputStream(
+                samplerate=self.sample_rate,
+                channels=self.channels,
+                dtype="int16",
             ),
         )
 
