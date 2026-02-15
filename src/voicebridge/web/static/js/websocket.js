@@ -2,7 +2,9 @@
  * WebSocket client for bidirectional communication with backend
  */
 
-class WebSocketClient {
+import { PCMPlayer } from "./pcm_player.js";
+
+export class WebSocketClient {
     constructor() {
         this.ws = null;
         this.reconnectAttempts = 0;
@@ -13,6 +15,7 @@ class WebSocketClient {
         this.onError = null;
         this.isReady = false;
         this.readyResolve = null;
+        this.pcmPlayer = new PCMPlayer({ sampleRate: 22050 });
     }
 
     /**
@@ -155,7 +158,7 @@ class WebSocketClient {
                 case 'audio':
                     // Handle audio response from server
                     console.log('[WebSocket] Received audio from server');
-                    this.playAudio(message.data);
+                    this.pcmPlayer.enqueue(message.data);
                     break;
 
                 default:
@@ -163,36 +166,6 @@ class WebSocketClient {
             }
         } catch (error) {
             console.error('[WebSocket] Error handling message:', error);
-        }
-    }
-
-    /**
-     * Play audio received from server
-     */
-    playAudio(audioBase64) {
-        try {
-            // Convert base64 to audio blob
-            const audioData = atob(audioBase64);
-            const arrayBuffer = new ArrayBuffer(audioData.length);
-            const view = new Uint8Array(arrayBuffer);
-
-            for (let i = 0; i < audioData.length; i++) {
-                view[i] = audioData.charCodeAt(i);
-            }
-
-            const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
-            const url = URL.createObjectURL(blob);
-
-            const audio = new Audio(url);
-            audio.play();
-
-            // Clean up URL after playback
-            audio.onended = () => {
-                URL.revokeObjectURL(url);
-            };
-
-        } catch (error) {
-            console.error('Error playing audio:', error);
         }
     }
 
@@ -251,6 +224,7 @@ let wsClient;
 // Initialize WebSocket client on page load
 document.addEventListener('DOMContentLoaded', () => {
     wsClient = new WebSocketClient();
+    globalThis.wsClient = wsClient;
 
     // Set up status change handler
     wsClient.onStatusChange = (status) => {
