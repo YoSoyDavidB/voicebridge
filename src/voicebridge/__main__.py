@@ -21,8 +21,22 @@ from voicebridge.core.pipeline import PipelineOrchestrator
 
 @click.group(invoke_without_command=True)
 @click.pass_context
-def cli(ctx: click.Context) -> None:
+@click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
+@click.option("--quiet", "-q", is_flag=True, help="Quiet mode (errors only)")
+def cli(ctx: click.Context, verbose: bool, quiet: bool) -> None:
     """VoiceBridge - Real-time Spanish to English voice interpreter."""
+    # Store verbosity level in context
+    ctx.ensure_object(dict)
+    ctx.obj['verbose'] = verbose
+    ctx.obj['quiet'] = quiet
+
+    # Set environment variable for other modules
+    import os
+    if verbose:
+        os.environ['VOICEBRIDGE_VERBOSE'] = '1'
+    if quiet:
+        os.environ['VOICEBRIDGE_QUIET'] = '1'
+
     if ctx.invoked_subcommand is None:
         # Use run_cli() which has silent mode support
         from voicebridge.cli import run_cli
@@ -90,7 +104,8 @@ def start_command() -> None:
 @cli.command()
 @click.argument("mode", type=click.Choice(["testing", "teams"]), required=False)
 @click.option("--device", "-d", type=int, help="Virtual audio device ID (for teams mode)")
-def profile(mode: str | None, device: int | None) -> None:
+@click.option("--auto", is_flag=True, help="Auto-detect virtual device (teams mode)")
+def profile(mode: str | None, device: int | None, auto: bool) -> None:
     """Manage configuration profiles.
 
     \b
@@ -102,6 +117,7 @@ def profile(mode: str | None, device: int | None) -> None:
     Examples:
       voicebridge profile              # Show current profile
       voicebridge profile testing      # Switch to testing mode
+      voicebridge profile teams --auto # Auto-detect virtual device
       voicebridge profile teams -d 5   # Switch to Teams mode with device 5
     """
     from voicebridge.utils.profiles import apply_profile, show_current_profile
@@ -109,7 +125,72 @@ def profile(mode: str | None, device: int | None) -> None:
     if mode is None:
         show_current_profile()
     else:
-        apply_profile(mode, device)
+        apply_profile(mode, device, auto)
+
+
+@cli.command()
+def test() -> None:
+    """Test VoiceBridge with a sample translation."""
+    click.echo("\n" + "=" * 70)
+    click.echo(click.style("VOICEBRIDGE TEST MODE", fg="cyan", bold=True))
+    click.echo("=" * 70 + "\n")
+
+    try:
+        click.echo("Loading configuration...")
+        from voicebridge.config.settings import VoiceBridgeSettings
+        settings = VoiceBridgeSettings()
+        click.echo(click.style("✓ Configuration loaded", fg="green"))
+
+        click.echo("\nTesting translation service...")
+
+        # Test phrase
+        test_phrase_es = "Hola, esta es una prueba del sistema"
+
+        click.echo(f"\n{click.style('→ Spanish:', fg='yellow')} {test_phrase_es}")
+
+        import asyncio
+        from voicebridge.services.translation.openai_client import OpenAITranslationClient
+
+        async def test_translation():
+            translator = OpenAITranslationClient(
+                api_key=settings.openai_api_key,
+                model=settings.openai_model,
+                temperature=settings.openai_temperature,
+            )
+
+            import time
+            start = time.monotonic()
+            translation = await translator._translate_text(test_phrase_es, start)
+            latency = (time.monotonic() - start) * 1000
+
+            if translation:
+                click.echo(click.style(f"✓ Translation successful ({latency:.0f}ms)", fg="green"))
+                click.echo(f"{click.style('→ English:', fg='yellow')} {translation.translated_text}")
+                return True
+            else:
+                click.echo(click.style("✗ Translation failed", fg="red"))
+                return False
+
+        success = asyncio.run(test_translation())
+
+        if success:
+            click.echo("\n" + "=" * 70)
+            click.echo(click.style("✓ TEST PASSED - VoiceBridge is ready!", fg="green", bold=True))
+            click.echo("=" * 70)
+            click.echo(click.style("\nNext steps:", fg="cyan"))
+            click.echo("  1. voicebridge profile teams --auto  # Configure for Teams")
+            click.echo("  2. voicebridge                        # Start translating")
+        else:
+            click.echo("\n" + "=" * 70)
+            click.echo(click.style("✗ TEST FAILED", fg="red", bold=True))
+            click.echo("=" * 70)
+            click.echo("\nCheck your OpenAI API key in .env\n")
+            sys.exit(1)
+
+    except Exception as e:
+        click.echo(click.style(f"\n✗ Error: {e}", fg="red"))
+        click.echo("\nMake sure you have configured your .env file")
+        sys.exit(1)
 
 
 @cli.command()
