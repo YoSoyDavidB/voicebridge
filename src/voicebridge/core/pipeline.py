@@ -6,9 +6,10 @@ all components through asyncio queues.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 import asyncio
+import inspect
 import time
 
 from voicebridge.audio.capture import AudioCapture
@@ -55,6 +56,9 @@ class PipelineOrchestrator:
         self._tts: Optional[ElevenLabsTTSClient] = None
         self._audio_output: Optional[AudioOutput] = None
 
+        # Optional callback for TTS output
+        self._tts_output_callback: Optional[Callable[[bytes], Any]] = None
+
         # Queues
         self._queue_capture_to_vad: Optional[asyncio.Queue[AudioChunk]] = None
         self._queue_vad_to_stt: Optional[asyncio.Queue[VADResult]] = None
@@ -64,6 +68,14 @@ class PipelineOrchestrator:
 
         # Component tasks
         self._tasks: list[asyncio.Task[Any]] = []
+
+    def set_tts_output_callback(self, callback: Callable[[bytes], Any]) -> None:
+        """Set callback for TTS audio output.
+
+        Args:
+            callback: Function that accepts raw PCM audio bytes
+        """
+        self._tts_output_callback = callback
 
     async def start(self) -> None:
         """Start the pipeline.
@@ -124,13 +136,14 @@ class PipelineOrchestrator:
             output_sample_rate=self.settings.tts_output_sample_rate,
         )
 
-        self._audio_output = AudioOutput(
-            sample_rate=self.settings.tts_output_sample_rate,
-            channels=1,
-            dtype="int16",
-            device_id=getattr(self.settings, "output_device_id", None),
-            buffer_size_ms=getattr(self.settings, "output_buffer_size_ms", 50),
-        )
+        if self._tts_output_callback is None:
+            self._audio_output = AudioOutput(
+                sample_rate=self.settings.tts_output_sample_rate,
+                channels=1,
+                dtype="int16",
+                device_id=getattr(self.settings, "output_device_id", None),
+                buffer_size_ms=getattr(self.settings, "output_buffer_size_ms", 50),
+            )
 
         # Connect components with queues
         print(f"[Pipeline] 🔗 Connecting components with queues")
@@ -148,7 +161,8 @@ class PipelineOrchestrator:
         self._tts.set_input_queue(self._queue_translation_to_tts)
         self._tts.set_output_queue(self._queue_tts_to_output)
 
-        self._audio_output.set_input_queue(self._queue_tts_to_output)
+        if self._audio_output is not None:
+            self._audio_output.set_input_queue(self._queue_tts_to_output)
 
         # Start all components
         self._tasks = [
@@ -157,11 +171,41 @@ class PipelineOrchestrator:
             asyncio.create_task(self._stt.start()),
             asyncio.create_task(self._translation.start()),
             asyncio.create_task(self._tts.start()),
-            asyncio.create_task(self._audio_output.start()),
         ]
+
+        if self._audio_output is not None:
+            self._tasks.append(asyncio.create_task(self._audio_output.start()))
+        else:
+            self._tasks.append(asyncio.create_task(self._process_tts_output_callback()))
 
         # Wait for all tasks
         await asyncio.gather(*self._tasks, return_exceptions=True)
+
+    async def _process_tts_output_callback(self) -> None:
+        """Process TTS output and send to callback when configured."""
+        if self._queue_tts_to_output is None:
+            return
+
+        while self._is_running:
+            try:
+                tts_result = await asyncio.wait_for(
+                    self._queue_tts_to_output.get(),
+                    timeout=0.1,
+                )
+            except asyncio.TimeoutError:
+                continue
+            except asyncio.CancelledError:
+                break
+
+            if self._tts_output_callback is None:
+                continue
+
+            try:
+                result = self._tts_output_callback(tts_result.audio_data)
+                if inspect.isawaitable(result):
+                    await result
+            except Exception as e:
+                print(f"Error sending TTS output: {e}")
 
     async def stop(self) -> None:
         """Stop the pipeline.

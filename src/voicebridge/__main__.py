@@ -77,6 +77,14 @@ def check() -> None:
         sys.exit(1)
 
 
+@cli.command(name="cli")
+def cli_command() -> None:
+    """Run the CLI pipeline with local speaker output."""
+    from voicebridge.cli import run_cli
+
+    asyncio.run(run_cli())
+
+
 @cli.command()
 @click.option("--host", default="127.0.0.1", help="Host to bind to (default: 127.0.0.1)")
 @click.option("--port", default=8000, help="Port to bind to (default: 8000)")
