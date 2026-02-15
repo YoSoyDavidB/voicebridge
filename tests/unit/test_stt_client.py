@@ -336,6 +336,45 @@ class TestDeepgramSTTClientTranscription:
 
         assert result is None
 
+    @pytest.mark.asyncio
+    async def test_final_transcript_timeout_with_interim_flood(self) -> None:
+        """Should timeout even if interim results keep arriving."""
+        mock_ws = AsyncMock()
+
+        interim_response = {
+            "type": "Results",
+            "is_final": False,
+            "channel": {
+                "alternatives": [
+                    {
+                        "transcript": "hola",
+                        "confidence": 0.4,
+                    }
+                ]
+            },
+        }
+
+        async def recv_forever():
+            return json.dumps(interim_response)
+
+        mock_ws.recv = AsyncMock(side_effect=recv_forever)
+
+        client = DeepgramSTTClient(
+            api_key="test_key",
+            language="es",
+            model="nova-2",
+            sample_rate=16000,
+            finalization_timeout_s=0.01,
+        )
+        client._ws = mock_ws
+
+        result = await asyncio.wait_for(
+            client._receive_final_transcript(start_time=0.0),
+            timeout=0.05,
+        )
+
+        assert result is None
+
 
 class TestDeepgramSTTClientQueue:
     """Test queue management."""

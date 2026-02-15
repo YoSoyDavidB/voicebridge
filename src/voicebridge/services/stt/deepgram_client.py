@@ -233,10 +233,14 @@ class DeepgramSTTClient:
             return None
 
         try:
+            deadline = time.monotonic() + self.finalization_timeout_s
             while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return None
                 response_text = await asyncio.wait_for(
                     self._ws.recv(),
-                    timeout=self.finalization_timeout_s,
+                    timeout=remaining,
                 )
                 response = json.loads(response_text)
 
