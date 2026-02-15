@@ -11,6 +11,8 @@ class WebSocketClient {
         this.isIntentionallyClosed = false;
         this.onStatusChange = null;
         this.onError = null;
+        this.isReady = false;
+        this.readyResolve = null;
     }
 
     /**
@@ -20,10 +22,14 @@ class WebSocketClient {
         return new Promise((resolve, reject) => {
             try {
                 this.isIntentionallyClosed = false;
+                this.isReady = false;
                 const wsUrl = `ws://${window.location.host}/ws`;
-                console.log('Connecting to WebSocket:', wsUrl);
+                console.log('[WebSocket] Connecting to:', wsUrl);
 
                 this.ws = new WebSocket(wsUrl);
+
+                // Store resolve for when we receive "ready" status
+                this.readyResolve = resolve;
 
                 this.ws.onopen = () => {
                     console.log('[WebSocket] Connection opened');
@@ -37,7 +43,7 @@ class WebSocketClient {
                         this.onStatusChange('connected');
                     }
 
-                    resolve();
+                    // Don't resolve yet - wait for "ready" status
                 };
 
                 this.ws.onmessage = (event) => {
@@ -123,15 +129,23 @@ class WebSocketClient {
 
             switch (message.type) {
                 case 'status':
-                    console.log('Status:', message.message);
+                    console.log('[WebSocket] Status:', message.state, '-', message.message);
                     if (this.onStatusChange) {
                         this.onStatusChange(message.message);
                     }
                     updateStatus(message.message);
+
+                    // If we're ready and waiting for confirmation, resolve the connect promise
+                    if (message.state === 'ready' && this.readyResolve) {
+                        console.log('[WebSocket] System ready - resolving connect promise');
+                        this.isReady = true;
+                        this.readyResolve();
+                        this.readyResolve = null;
+                    }
                     break;
 
                 case 'error':
-                    console.error('Server error:', message.message);
+                    console.error('[WebSocket] Server error:', message.message);
                     if (this.onError) {
                         this.onError(message.message);
                     }
@@ -140,15 +154,15 @@ class WebSocketClient {
 
                 case 'audio':
                     // Handle audio response from server
-                    console.log('Received audio from server');
+                    console.log('[WebSocket] Received audio from server');
                     this.playAudio(message.data);
                     break;
 
                 default:
-                    console.warn('Unknown message type:', message.type);
+                    console.warn('[WebSocket] Unknown message type:', message.type);
             }
         } catch (error) {
-            console.error('Error handling message:', error);
+            console.error('[WebSocket] Error handling message:', error);
         }
     }
 
