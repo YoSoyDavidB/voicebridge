@@ -157,6 +157,7 @@ class DeepgramSTTClient:
                 # Signal end of stream to finalize transcript
                 await self._ws.send(json.dumps({"type": "CloseStream"}))
 
+                # Receive responses until final transcript (with timeout)
                 transcript = await self._receive_final_transcript(start_time)
                 if transcript is None:
                     print("[STT] ⚠️ No final transcript before timeout")
@@ -228,7 +229,14 @@ class DeepgramSTTClient:
         return result
 
     async def _receive_final_transcript(self, start_time: float) -> TranscriptResult | None:
-        """Receive Deepgram responses until a final transcript or timeout."""
+        """Receive Deepgram responses until a final transcript or timeout.
+
+        Args:
+            start_time: Timestamp when audio was sent
+
+        Returns:
+            TranscriptResult if final transcript received, None on timeout
+        """
         if self._ws is None:
             return None
 

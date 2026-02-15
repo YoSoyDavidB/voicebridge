@@ -395,7 +395,6 @@ class TestDeepgramSTTClientTranscription:
         assert result is None
         assert client._ws is None
 
-
 class TestDeepgramSTTClientQueue:
     """Test queue management."""
 

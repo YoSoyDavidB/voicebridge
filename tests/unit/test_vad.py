@@ -64,6 +64,7 @@ class TestVADProcessorSpeechDetection:
             model=mock_model,
         )
 
+        # 480 samples @ 16kHz = 30ms (too short for Silero VAD)
         chunk = AudioChunk(
             data=b"\x00" * (480 * 2),
             timestamp_ms=0.0,
@@ -349,6 +350,37 @@ class TestVADProcessorVADResult:
 
         # Average of [0.9, 0.95, 0.85] = 0.9
         assert result.confidence == pytest.approx(0.9, abs=0.01)
+
+    def test_appends_trailing_silence_on_final_utterance(self) -> None:
+        """Final VADResult should include trailing silence for STT finalization."""
+        mock_model = MagicMock()
+        vad = VADProcessor(
+            sample_rate=16000,
+            threshold=0.5,
+            min_speech_duration_ms=250,
+            min_silence_duration_ms=300,
+            speech_pad_ms=100,
+            max_utterance_duration_ms=15000,
+            model=mock_model,
+        )
+
+        chunk = AudioChunk(
+            data=b"\x01" * (480 * 2),
+            timestamp_ms=0.0,
+            sample_rate=16000,
+            channels=1,
+            duration_ms=30.0,
+            sequence_number=0,
+        )
+        vad._speech_buffer = [chunk]
+        vad._speech_start_ms = 0.0
+
+        result = vad._create_vad_result(is_partial=False)
+
+        silence_samples = int(16000 * 0.3)
+        expected_bytes = (480 * 2) + (silence_samples * 2)
+
+        assert len(result.audio_data) == expected_bytes
 
 
 class TestVADProcessorQueue:
