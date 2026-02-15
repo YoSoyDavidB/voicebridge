@@ -75,7 +75,7 @@ class DeepgramSTTClient:
         try:
             self._ws = await websockets.connect(
                 url,
-                extra_headers={"Authorization": f"Token {self.api_key}"},
+                additional_headers={"Authorization": f"Token {self.api_key}"},
             )
         except Exception as e:
             raise STTConnectionError(f"Failed to connect to Deepgram: {e}") from e

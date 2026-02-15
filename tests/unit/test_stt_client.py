@@ -57,6 +57,9 @@ class TestDeepgramSTTClientConnection:
 
             # Should have called websockets.connect
             mock_connect.assert_called_once()
+            assert mock_connect.call_args.kwargs.get("additional_headers") == {
+                "Authorization": "Token test_key",
+            }
             assert client._ws is not None
 
     @pytest.mark.asyncio
