@@ -195,6 +195,8 @@ class ElevenLabsTTSClient:
                     # Stop receiving if final chunk
                     if response.get("isFinal", False):
                         print(f"[TTS] ✅ Audio generation complete")
+                        # Reset WebSocket for next utterance
+                        self._ws = None
                         break
 
             except asyncio.TimeoutError:
