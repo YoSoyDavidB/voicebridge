@@ -152,15 +152,21 @@ class DeepgramSTTClient:
                 start_time = time.monotonic()
                 await self._ws.send(vad_result.audio_data)
 
-                # Receive response
-                response_text = await self._ws.recv()
-                response = json.loads(response_text)
+                # Signal end of stream to finalize transcript
+                await self._ws.send(json.dumps({"type": "CloseStream"}))
 
-                # Parse and forward result
-                transcript = self._parse_deepgram_response(response, start_time)
-                if transcript is not None:
+                # Receive responses until final transcript
+                while True:
+                    response_text = await self._ws.recv()
+                    response = json.loads(response_text)
+
+                    transcript = self._parse_deepgram_response(response, start_time)
+                    if transcript is None:
+                        continue
+
                     print(f"[STT] 📝 Transcript: \"{transcript.text}\" (confidence={transcript.confidence:.2f})")
                     await self._output_queue.put(transcript)
+                    break
 
             except asyncio.TimeoutError:
                 # No VAD results available, continue
