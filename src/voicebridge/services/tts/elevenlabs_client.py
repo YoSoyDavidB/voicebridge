@@ -180,6 +180,9 @@ class ElevenLabsTTSClient:
                     # Parse and forward audio result
                     audio_result = await self._parse_elevenlabs_response(response, start_time)
                     if audio_result is not None:
+                        print(
+                            f"[TTS] ↩️ Audio bytes={len(audio_result.audio_data)} final={audio_result.is_final}"
+                        )
                         await self._output_queue.put(audio_result)
 
                     # Stop receiving if final chunk
