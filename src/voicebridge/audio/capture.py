@@ -13,6 +13,7 @@ import queue
 import time
 from typing import Any
 
+import numpy as np
 import sounddevice as sd
 
 from voicebridge.core.models import AudioChunk
@@ -32,6 +33,7 @@ class AudioCapture:
         channels: int,
         chunk_duration_ms: int,
         device_id: Optional[int] = None,
+        input_gain: float = 1.0,
     ) -> None:
         """Initialize audio capture.
 
@@ -45,6 +47,7 @@ class AudioCapture:
         self.channels = channels
         self.chunk_duration_ms = chunk_duration_ms
         self.device_id = device_id
+        self.input_gain = input_gain
 
         # Calculate chunk size in samples
         self._chunk_size = int(sample_rate * chunk_duration_ms / 1000)
@@ -194,7 +197,7 @@ class AudioCapture:
             AudioChunk with all metadata filled in
         """
         chunk = AudioChunk(
-            data=data,
+            data=self._apply_gain(data),
             timestamp_ms=timestamp_s * 1000.0,  # Convert to milliseconds
             sample_rate=self.sample_rate,
             channels=self.channels,
@@ -205,3 +208,20 @@ class AudioCapture:
         self._sequence_number += 1
 
         return chunk
+
+    def _apply_gain(self, data: bytes) -> bytes:
+        """Apply input gain to raw PCM audio bytes.
+
+        Args:
+            data: Raw int16 PCM bytes
+
+        Returns:
+            Gain-adjusted int16 PCM bytes (clipped)
+        """
+        if self.input_gain == 1.0:
+            return data
+
+        audio_array = np.frombuffer(data, dtype=np.int16).astype(np.float32)
+        audio_array *= self.input_gain
+        np.clip(audio_array, -32768, 32767, out=audio_array)
+        return audio_array.astype(np.int16).tobytes()

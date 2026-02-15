@@ -204,6 +204,35 @@ class TestAudioCaptureChunkCalculation:
             assert capture._chunk_size == expected_samples
 
 
+class TestAudioCaptureGain:
+    """Test input gain application."""
+
+    def test_applies_input_gain_with_clipping(self) -> None:
+        """Input gain should scale samples and clip to int16 range."""
+        with patch("voicebridge.audio.capture.sd"):
+            capture = AudioCapture(
+                sample_rate=16000,
+                channels=1,
+                chunk_duration_ms=30,
+                device_id=None,
+                input_gain=2.0,
+            )
+
+            # Samples: -1000, 1000, 20000
+            raw = (b"\x18\xfc"  # -1000
+                   b"\xe8\x03"  # 1000
+                   b"\x20\x4e")  # 20000
+
+            out = capture._apply_gain(raw)
+
+            # Expected: -2000, 2000, 32767 (clipped)
+            expected = (b"\x30\xf8"  # -2000
+                        b"\xd0\x07"  # 2000
+                        b"\xff\x7f")  # 32767
+
+            assert out == expected
+
+
 class TestAudioCaptureSequencing:
     """Test sequence number generation."""
 

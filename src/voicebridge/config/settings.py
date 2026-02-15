@@ -53,6 +53,11 @@ class VoiceBridgeSettings(BaseSettings):
         default=None,
         description="Input device ID (None = system default)",
     )
+    audio_input_gain: float = Field(
+        default=1.0,
+        ge=0.0,
+        description="Input gain multiplier for microphone audio",
+    )
     audio_output_device_id: Optional[int] = Field(
         default=None,
         description="Output device ID (None = system default)",

@@ -102,6 +102,8 @@ class PipelineOrchestrator:
             sample_rate=self.settings.audio_sample_rate,
             channels=self.settings.audio_channels,
             chunk_duration_ms=self.settings.audio_chunk_duration_ms,
+            device_id=getattr(self.settings, "audio_input_device_id", None),
+            input_gain=getattr(self.settings, "audio_input_gain", 1.0),
         )
 
         self._vad = VADProcessor(
