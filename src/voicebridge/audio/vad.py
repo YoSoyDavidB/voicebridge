@@ -74,12 +74,13 @@ class VADProcessor:
         Returns:
             Loaded VAD model
         """
-        model, _ = torch.hub.load(
+        model_and_utils = torch.hub.load(
             repo_or_dir="snakers4/silero-vad",
             model="silero_vad",
             force_reload=False,
             onnx=False,
         )
+        model = model_and_utils[0]  # type: ignore[index]
         model.eval()
         return model
 
@@ -131,7 +132,6 @@ class VADProcessor:
                 chunk = self._input_queue.get_nowait()
 
                 chunk_count += 1
-                # Debug: removed for performance
 
                 # Detect speech
                 is_speech = self._is_speech(chunk)
@@ -262,9 +262,17 @@ class VADProcessor:
         # Concatenate all audio data
         audio_bytes = b"".join(chunk.data for chunk in self._speech_buffer)
 
+        # Append trailing silence for final utterances to help STT finalization
+        if not is_partial:
+            silence_samples = int(self.sample_rate * (self.min_silence_duration_ms / 1000.0))
+            if silence_samples > 0:
+                audio_bytes += b"\x00\x00" * silence_samples
+
         # Calculate timestamps
         start_ms = self._speech_buffer[0].timestamp_ms
         end_ms = self._speech_buffer[-1].timestamp_ms + self._speech_buffer[-1].duration_ms
+        if not is_partial:
+            end_ms += self.min_silence_duration_ms
         duration_ms = end_ms - start_ms
 
         # Calculate average confidence

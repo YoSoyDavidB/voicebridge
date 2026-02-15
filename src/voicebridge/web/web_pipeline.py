@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from typing import Any, Optional
 
 from voicebridge.audio.vad import VADProcessor
@@ -42,7 +43,7 @@ class WebPipeline:
         self._is_running = False
 
         # Callback for sending TTS audio back to browser
-        self._audio_output_callback: Optional[callable] = None
+        self._audio_output_callback: Optional[Callable[[str], Awaitable[None]]] = None
 
         # Components
         self._vad: Optional[VADProcessor] = None
@@ -60,7 +61,7 @@ class WebPipeline:
         # Tasks
         self._tasks: list[asyncio.Task[Any]] = []
 
-    def set_audio_output_callback(self, callback: callable) -> None:
+    def set_audio_output_callback(self, callback: Callable[[str], Awaitable[None]]) -> None:
         """Set callback for sending TTS audio to browser.
 
         Args:
@@ -162,8 +163,13 @@ class WebPipeline:
         """Process TTS output and send to browser via callback."""
         while self._is_running:
             try:
+                queue = self._queue_tts_output
+                if queue is None:
+                    await asyncio.sleep(0.01)
+                    continue
+
                 # Get TTS result from queue
-                tts_result = await self._queue_tts_output.get()
+                tts_result = await queue.get()
 
                 logger.info(f"TTS output received: {len(tts_result.audio_data)} bytes")
 

@@ -147,7 +147,6 @@ class AudioCapture {
 
             // Send to server via WebSocket
             if (wsClient && wsClient.isConnected()) {
-                console.log(`[Audio] Sending chunk: ${chunk.length} samples, base64 length: ${base64Data.length}`);
                 wsClient.sendAudio(base64Data);
             } else {
                 console.warn('[Audio] WebSocket not connected, dropping chunk');

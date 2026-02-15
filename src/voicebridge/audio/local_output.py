@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 import sounddevice as sd
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class LocalSpeakerOutput:
     sample_rate: int
     channels: int

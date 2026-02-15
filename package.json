@@ -1,0 +1,11 @@
+{
+  "name": "voicebridge-web-tests",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "vitest": "^2.1.9"
+  },
+  "scripts": {
+    "test": "vitest"
+  }
+}

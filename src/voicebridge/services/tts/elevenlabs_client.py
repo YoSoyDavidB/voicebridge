@@ -170,19 +170,21 @@ class ElevenLabsTTSClient:
                     "text": translation.translated_text,
                     "try_trigger_generation": True,
                 }
+                print(f"[TTS] 📤 Sending text to ElevenLabs: {len(translation.translated_text)} chars")
                 await self._ws.send(json.dumps(text_message))
 
                 # Receive and forward audio chunks
+                print(f"[TTS] ⏳ Waiting for ElevenLabs response...")
                 while True:
                     response_text = await self._ws.recv()
                     response = json.loads(response_text)
 
+                    print(f"[TTS] ↩️ Response: isFinal={response.get('isFinal', False)}, has_audio={bool(response.get('audio'))}")
+
                     # Parse and forward audio result
                     audio_result = await self._parse_elevenlabs_response(response, start_time)
                     if audio_result is not None:
-                        print(
-                            f"[TTS] ↩️ Audio bytes={len(audio_result.audio_data)} final={audio_result.is_final}"
-                        )
+                        print(f"[TTS] ✉️ Sending {len(audio_result.audio_data)} bytes to output queue")
                         await self._output_queue.put(audio_result)
 
                     # Stop receiving if final chunk
@@ -194,6 +196,9 @@ class ElevenLabsTTSClient:
                 # No translations available, continue
                 continue
             except Exception as e:
+                print(f"[TTS] ❌ Error synthesizing audio: {e}")
+                import traceback
+                traceback.print_exc()
                 raise TTSError(f"Error synthesizing audio: {e}") from e
 
     async def _parse_elevenlabs_response(
