@@ -2,6 +2,7 @@
 
 Usage:
     python -m voicebridge              # Run with .env configuration
+    python -m voicebridge web          # Start web interface
     python -m voicebridge --help       # Show help
     python -m voicebridge devices      # List audio devices
     python -m voicebridge check        # Check configuration
@@ -73,6 +74,48 @@ def check() -> None:
         click.echo(click.style(f"✗ Error: {e}", fg="red"))
         click.echo("\nMake sure you have a .env file with your API keys.")
         click.echo("See .env.example for a template.\n")
+        sys.exit(1)
+
+
+@cli.command()
+@click.option("--host", default="127.0.0.1", help="Host to bind to (default: 127.0.0.1)")
+@click.option("--port", default=8000, help="Port to bind to (default: 8000)")
+@click.option("--reload", is_flag=True, help="Enable auto-reload on code changes")
+def web(host: str, port: int, reload: bool) -> None:
+    """Start the web interface server."""
+    import webbrowser
+    from threading import Timer
+
+    click.echo("\n" + "=" * 70)
+    click.echo(click.style("VOICEBRIDGE WEB INTERFACE", fg="cyan", bold=True))
+    click.echo("=" * 70 + "\n")
+
+    click.echo(f"Starting server at http://{host}:{port}")
+    click.echo(click.style("✓ Web interface ready", fg="green"))
+    click.echo("\nConfigure API keys in the Settings panel (⚙️ button)")
+    click.echo("Press Ctrl+C to stop\n")
+
+    # Open browser after a short delay
+    def open_browser():
+        webbrowser.open(f"http://{host}:{port}")
+
+    Timer(1.5, open_browser).start()
+
+    # Start uvicorn server
+    try:
+        import uvicorn
+
+        uvicorn.run(
+            "voicebridge.web.app:app",
+            host=host,
+            port=port,
+            reload=reload,
+            log_level="info",
+        )
+    except KeyboardInterrupt:
+        click.echo(click.style("\n✓ Server stopped", fg="green"))
+    except Exception as e:
+        click.echo(click.style(f"\n✗ Error: {e}", fg="red"))
         sys.exit(1)
 
 
