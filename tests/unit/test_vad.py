@@ -219,6 +219,43 @@ class TestVADProcessorUtteranceGrouping:
         should_emit = vad._should_emit_utterance()
         assert should_emit is False
 
+    def test_min_speech_duration(self) -> None:
+        """VAD should not emit utterances shorter than min_speech_duration."""
+        mock_model = MagicMock()
+        vad = VADProcessor(
+            sample_rate=16000,
+            threshold=0.5,
+            min_speech_duration_ms=250,
+            min_silence_duration_ms=300,
+            speech_pad_ms=100,
+            max_utterance_duration_ms=15000,
+            model=mock_model,
+        )
+
+        # Simulate short speech buffer (120ms)
+        chunk1 = AudioChunk(
+            data=b"speech1",
+            timestamp_ms=0.0,
+            sample_rate=16000,
+            channels=1,
+            duration_ms=30.0,
+            sequence_number=0,
+        )
+        chunk2 = AudioChunk(
+            data=b"speech2",
+            timestamp_ms=90.0,
+            sample_rate=16000,
+            channels=1,
+            duration_ms=30.0,
+            sequence_number=1,
+        )
+
+        vad._speech_buffer = [chunk1, chunk2]
+        vad._silence_duration_ms = 400.0
+
+        should_emit = vad._should_emit_utterance()
+        assert should_emit is False
+
     def test_max_utterance_duration(self) -> None:
         """VAD should force-split utterances exceeding max_utterance_duration."""
         mock_model = MagicMock()

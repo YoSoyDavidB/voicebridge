@@ -226,7 +226,14 @@ class VADProcessor:
             return False
 
         # Check if silence duration exceeds threshold
-        return self._silence_duration_ms >= self.min_silence_duration_ms
+        if self._silence_duration_ms < self.min_silence_duration_ms:
+            return False
+
+        # Check if speech duration meets minimum
+        start_ms = self._speech_buffer[0].timestamp_ms
+        end_ms = self._speech_buffer[-1].timestamp_ms + self._speech_buffer[-1].duration_ms
+        duration_ms = end_ms - start_ms
+        return duration_ms >= self.min_speech_duration_ms
 
     def _should_force_emit(self, current_timestamp_ms: float) -> bool:
         """Check if we should force-emit due to max duration.

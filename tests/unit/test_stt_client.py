@@ -375,6 +375,26 @@ class TestDeepgramSTTClientTranscription:
 
         assert result is None
 
+    @pytest.mark.asyncio
+    async def test_receive_error_resets_connection(self) -> None:
+        """Should reset connection on receive errors."""
+        mock_ws = AsyncMock()
+        mock_ws.recv = AsyncMock(side_effect=RuntimeError("boom"))
+
+        client = DeepgramSTTClient(
+            api_key="test_key",
+            language="es",
+            model="nova-2",
+            sample_rate=16000,
+            finalization_timeout_s=0.01,
+        )
+        client._ws = mock_ws
+
+        result = await client._receive_final_transcript(start_time=0.0)
+
+        assert result is None
+        assert client._ws is None
+
 
 class TestDeepgramSTTClientQueue:
     """Test queue management."""

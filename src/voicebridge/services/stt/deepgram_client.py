@@ -242,7 +242,9 @@ class DeepgramSTTClient:
                     self._ws.recv(),
                     timeout=remaining,
                 )
+                print(f"[STT] ↩️ Raw response: {response_text[:200]}")
                 response = json.loads(response_text)
+                print(f"[STT] ↩️ Message type: {response.get('type')}")
 
                 transcript = self._parse_deepgram_response(response, start_time)
                 if transcript is None:
@@ -250,4 +252,8 @@ class DeepgramSTTClient:
 
                 return transcript
         except asyncio.TimeoutError:
+            return None
+        except Exception as e:
+            print(f"[STT] ⚠️ Receive error: {e}")
+            self._ws = None
             return None
