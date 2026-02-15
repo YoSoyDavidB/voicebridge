@@ -83,7 +83,10 @@ class ElevenLabsTTSClient:
         url = self._build_websocket_url()
 
         try:
-            self._ws = await websockets.connect(url)
+            self._ws = await websockets.connect(
+                url,
+                additional_headers={"xi-api-key": self.api_key},
+            )
 
             # Send initial configuration
             config_message = {
