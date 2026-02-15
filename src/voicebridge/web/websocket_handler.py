@@ -101,6 +101,9 @@ class WebSocketHandler:
         self._config = data
         api_keys = data.get("apiKeys", {})
 
+        # Add voiceId to api_keys (it comes separately in the message)
+        api_keys['voiceId'] = data.get("voiceId", "")
+
         logger.info("Configuration received, initializing pipeline...")
 
         try:
