@@ -173,6 +173,11 @@ class ElevenLabsTTSClient:
                 print(f"[TTS] 📤 Sending text to ElevenLabs: {len(translation.translated_text)} chars")
                 await self._ws.send(json.dumps(text_message))
 
+                # Close the stream to signal completion
+                close_message = {"text": ""}
+                await self._ws.send(json.dumps(close_message))
+                print(f"[TTS] 📤 Sent end-of-stream signal")
+
                 # Receive and forward audio chunks
                 print(f"[TTS] ⏳ Waiting for ElevenLabs response...")
                 while True:
@@ -190,6 +195,8 @@ class ElevenLabsTTSClient:
                     # Stop receiving if final chunk
                     if response.get("isFinal", False):
                         print(f"[TTS] ✅ Audio generation complete")
+                        # Reset WebSocket for next utterance
+                        self._ws = None
                         break
 
             except asyncio.TimeoutError:

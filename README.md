@@ -48,6 +48,9 @@ Physical Mic → Audio Capture → VAD → STT (Deepgram) → Translation (GPT-4
 git clone https://github.com/YoSoyDavidB/voicebridge.git
 cd voicebridge
 
+# Install dependencies and VoiceBridge CLI
+pip install -e .
+
 # Install development dependencies
 make install-dev
 
@@ -60,35 +63,32 @@ nano .env
 
 ### Usage
 
-**Option 1: Using the helper script (recommended)**
+After installation, use the `voicebridge` command:
+
 ```bash
-# Check your configuration
-./voicebridge.sh check
+# Start VoiceBridge
+voicebridge
 
-# List available audio devices
-./voicebridge.sh devices
+# Check current profile
+voicebridge profile
 
-# Run VoiceBridge
-./voicebridge.sh
+# Switch to testing mode (hear translations)
+voicebridge profile testing
+
+# Switch to Teams mode (silent, sends to virtual device)
+voicebridge profile teams -d 5  # Replace 5 with your device ID
+
+# List audio devices
+voicebridge devices
+
+# Check configuration
+voicebridge check
 
 # Show help
-./voicebridge.sh --help
+voicebridge --help
 ```
 
-**Option 2: Direct Python command**
-```bash
-# Check your configuration
-python3 -m voicebridge check
-
-# List available audio devices
-python3 -m voicebridge devices
-
-# Run VoiceBridge
-python3 -m voicebridge
-
-# Show help
-python3 -m voicebridge --help
-```
+**See [QUICK_REFERENCE.md](QUICK_REFERENCE.md) for detailed command guide.**
 
 ### Development
 

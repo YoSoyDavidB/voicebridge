@@ -28,6 +28,7 @@ from voicebridge.core.models import (
 from voicebridge.services.stt.deepgram_client import DeepgramSTTClient
 from voicebridge.services.translation.openai_client import OpenAITranslationClient
 from voicebridge.services.tts.elevenlabs_client import ElevenLabsTTSClient
+from voicebridge.utils.transcript_logger import TranscriptLogger
 
 
 class PipelineOrchestrator:
@@ -55,6 +56,7 @@ class PipelineOrchestrator:
         self._translation: Optional[OpenAITranslationClient] = None
         self._tts: Optional[ElevenLabsTTSClient] = None
         self._audio_output: Optional[AudioOutput] = None
+        self._transcript_logger: Optional[TranscriptLogger] = None
 
         # Optional callback for TTS output
         self._tts_output_callback: Optional[Callable[[TTSAudioResult], Any]] = None
@@ -63,7 +65,9 @@ class PipelineOrchestrator:
         self._queue_capture_to_vad: Optional[asyncio.Queue[AudioChunk]] = None
         self._queue_vad_to_stt: Optional[asyncio.Queue[VADResult]] = None
         self._queue_stt_to_translation: Optional[asyncio.Queue[TranscriptResult]] = None
+        self._queue_translation_output: Optional[asyncio.Queue[TranslationResult]] = None  # Raw translation output
         self._queue_translation_to_tts: Optional[asyncio.Queue[TranslationResult]] = None
+        self._queue_translation_to_logger: Optional[asyncio.Queue[TranslationResult]] = None
         self._queue_tts_to_output: Optional[asyncio.Queue[TTSAudioResult]] = None
 
         # Component tasks
@@ -89,12 +93,18 @@ class PipelineOrchestrator:
         self._is_running = True
         self._start_time = time.monotonic()
 
+        # Initialize transcript logger
+        self._transcript_logger = TranscriptLogger()
+        print(f"[Pipeline] 📝 Transcript logging enabled: {self._transcript_logger.get_session_path()}")
+
         # Create queues
         # AudioCapture uses run_coroutine_threadsafe to put items from audio thread
         self._queue_capture_to_vad = asyncio.Queue(maxsize=500)  # ~15 seconds buffer
         self._queue_vad_to_stt = asyncio.Queue(maxsize=10)
         self._queue_stt_to_translation = asyncio.Queue(maxsize=10)
+        self._queue_translation_output = asyncio.Queue(maxsize=10)  # Raw translation output
         self._queue_translation_to_tts = asyncio.Queue(maxsize=10)
+        self._queue_translation_to_logger = asyncio.Queue(maxsize=100)  # Buffer for logging
         self._queue_tts_to_output = asyncio.Queue(maxsize=100)  # More buffer for audio playback
 
         # Create components
@@ -158,7 +168,7 @@ class PipelineOrchestrator:
         self._stt.set_output_queue(self._queue_stt_to_translation)
 
         self._translation.set_input_queue(self._queue_stt_to_translation)
-        self._translation.set_output_queue(self._queue_translation_to_tts)
+        self._translation.set_output_queue(self._queue_translation_output)
 
         self._tts.set_input_queue(self._queue_translation_to_tts)
         self._tts.set_output_queue(self._queue_tts_to_output)
@@ -172,6 +182,7 @@ class PipelineOrchestrator:
             asyncio.create_task(self._vad.start()),
             asyncio.create_task(self._stt.start()),
             asyncio.create_task(self._translation.start()),
+            asyncio.create_task(self._translation_router()),  # Routes translations to TTS and logger
             asyncio.create_task(self._tts.start()),
         ]
 
@@ -179,6 +190,9 @@ class PipelineOrchestrator:
             self._tasks.append(asyncio.create_task(self._audio_output.start()))
         else:
             self._tasks.append(asyncio.create_task(self._process_tts_output_callback()))
+
+        # Start transcript logger task
+        self._tasks.append(asyncio.create_task(self._process_transcript_logging()))
 
         # Wait for all tasks
         await asyncio.gather(*self._tasks, return_exceptions=True)
@@ -209,6 +223,53 @@ class PipelineOrchestrator:
             except Exception as e:
                 print(f"Error sending TTS output: {e}")
 
+    async def _translation_router(self) -> None:
+        """Route translation results to both TTS and logger queues."""
+        if self._queue_translation_output is None:
+            return
+        if self._queue_translation_to_tts is None or self._queue_translation_to_logger is None:
+            return
+
+        while self._is_running:
+            try:
+                translation = await asyncio.wait_for(
+                    self._queue_translation_output.get(),
+                    timeout=0.1,
+                )
+
+                # Send to both TTS and logger (non-blocking)
+                await self._queue_translation_to_tts.put(translation)
+                await self._queue_translation_to_logger.put(translation)
+
+            except asyncio.TimeoutError:
+                continue
+            except asyncio.CancelledError:
+                break
+
+    async def _process_transcript_logging(self) -> None:
+        """Monitor logger queue and save translation pairs to Markdown."""
+        if self._queue_translation_to_logger is None or self._transcript_logger is None:
+            return
+
+        while self._is_running:
+            try:
+                translation = await asyncio.wait_for(
+                    self._queue_translation_to_logger.get(),
+                    timeout=0.1,
+                )
+
+                # Log the translation pair (synchronous, fast operation)
+                self._transcript_logger.log_translation(
+                    spanish_text=translation.original_text,
+                    english_text=translation.translated_text,
+                    confidence=0.0,  # We don't have STT confidence here
+                )
+
+            except asyncio.TimeoutError:
+                continue
+            except asyncio.CancelledError:
+                break
+
     async def stop(self) -> None:
         """Stop the pipeline.
 
@@ -218,6 +279,11 @@ class PipelineOrchestrator:
             return
 
         self._is_running = False
+
+        # Write session summary before stopping
+        if self._transcript_logger is not None:
+            session_duration = time.monotonic() - self._start_time
+            self._transcript_logger.write_summary(duration_seconds=session_duration)
 
         # Stop all components in reverse order
         if self._audio_output:
@@ -315,7 +381,9 @@ class PipelineOrchestrator:
             "capture_to_vad": self._queue_capture_to_vad.qsize() if self._queue_capture_to_vad else 0,
             "vad_to_stt": self._queue_vad_to_stt.qsize() if self._queue_vad_to_stt else 0,
             "stt_to_translation": self._queue_stt_to_translation.qsize() if self._queue_stt_to_translation else 0,
+            "translation_output": self._queue_translation_output.qsize() if self._queue_translation_output else 0,
             "translation_to_tts": self._queue_translation_to_tts.qsize() if self._queue_translation_to_tts else 0,
+            "translation_to_logger": self._queue_translation_to_logger.qsize() if self._queue_translation_to_logger else 0,
             "tts_to_output": self._queue_tts_to_output.qsize() if self._queue_tts_to_output else 0,
         }
 

@@ -24,7 +24,9 @@ from voicebridge.core.pipeline import PipelineOrchestrator
 def cli(ctx: click.Context) -> None:
     """VoiceBridge - Real-time Spanish to English voice interpreter."""
     if ctx.invoked_subcommand is None:
-        asyncio.run(run_pipeline())
+        # Use run_cli() which has silent mode support
+        from voicebridge.cli import run_cli
+        asyncio.run(run_cli())
 
 
 @cli.command()
@@ -77,12 +79,37 @@ def check() -> None:
         sys.exit(1)
 
 
-@cli.command(name="cli")
-def cli_command() -> None:
-    """Run the CLI pipeline with local speaker output."""
+@cli.command(name="start")
+def start_command() -> None:
+    """Start VoiceBridge with current profile."""
     from voicebridge.cli import run_cli
 
     asyncio.run(run_cli())
+
+
+@cli.command()
+@click.argument("mode", type=click.Choice(["testing", "teams"]), required=False)
+@click.option("--device", "-d", type=int, help="Virtual audio device ID (for teams mode)")
+def profile(mode: str | None, device: int | None) -> None:
+    """Manage configuration profiles.
+
+    \b
+    Modes:
+      testing  - Hear translations locally (for testing)
+      teams    - Silent mode with virtual device (for Teams/Zoom)
+
+    \b
+    Examples:
+      voicebridge profile              # Show current profile
+      voicebridge profile testing      # Switch to testing mode
+      voicebridge profile teams -d 5   # Switch to Teams mode with device 5
+    """
+    from voicebridge.utils.profiles import apply_profile, show_current_profile
+
+    if mode is None:
+        show_current_profile()
+    else:
+        apply_profile(mode, device)
 
 
 @cli.command()

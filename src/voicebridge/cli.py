@@ -36,16 +36,29 @@ def create_cli_pipeline() -> PipelineOrchestrator:
             elevenlabs_voice_id="test_voice_id",
         )
     pipeline = PipelineOrchestrator(settings)
-    local_output = LocalSpeakerOutput(
-        sample_rate=settings.tts_output_sample_rate,
-        channels=1,
-    )
-    local_output.start()
+
+    # Only create audio output if enabled
+    local_output = None
+    if settings.audio_output_enabled:
+        local_output = LocalSpeakerOutput(
+            sample_rate=settings.tts_output_sample_rate,
+            channels=1,
+            device_id=settings.audio_output_device_id,
+        )
+        local_output.start()
+        print(f"[CLI] 🔊 Audio output enabled to device {settings.audio_output_device_id or 'default'}")
+    else:
+        print(f"[CLI] 🔇 Audio output disabled (silent mode)")
 
     def _tts_callback(result: TTSAudioResult) -> None:
         log_latency("tts", result.processing_latency_ms)
-        print(f"[Speaker] 🔊 Playing {len(result.audio_data)} bytes (final={result.is_final})")
-        local_output.enqueue(result.audio_data)
+
+        # Only play audio if output is enabled
+        if local_output is not None:
+            print(f"[Speaker] 🔊 Playing {len(result.audio_data)} bytes (final={result.is_final})")
+            local_output.enqueue(result.audio_data)
+        else:
+            print(f"[Speaker] 🔇 Silent mode: {len(result.audio_data)} bytes generated (not playing)")
 
     pipeline.set_tts_output_callback(_tts_callback)
     return pipeline
@@ -53,5 +66,12 @@ def create_cli_pipeline() -> PipelineOrchestrator:
 
 async def run_cli() -> None:
     pipeline = create_cli_pipeline()
-    await pipeline.start()
-    await asyncio.Event().wait()
+
+    try:
+        await pipeline.start()
+        await asyncio.Event().wait()
+    except KeyboardInterrupt:
+        print("\n[CLI] 🛑 Shutting down...")
+    finally:
+        await pipeline.stop()
+        print("[CLI] ✅ Pipeline stopped")
