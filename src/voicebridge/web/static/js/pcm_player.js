@@ -1,9 +1,13 @@
 export class PCMPlayer {
   constructor({ sampleRate, AudioContextImpl = globalThis.AudioContext }) {
+    if (!AudioContextImpl) {
+      throw new Error("AudioContext is not available");
+    }
     this.sampleRate = sampleRate;
     this.AudioContextImpl = AudioContextImpl;
     this.audioContext = new this.AudioContextImpl();
     this.gainNode = this.audioContext.createGain();
+    this.gainNode.connect(this.audioContext.destination);
     this.nextPlayTime = this.audioContext.currentTime;
   }
 
@@ -23,13 +27,18 @@ export class PCMPlayer {
   }
 
   playChunk(float32) {
+    if (this.audioContext.state === "suspended") {
+      this.audioContext.resume();
+    }
     const buffer = this.audioContext.createBuffer(1, float32.length, this.sampleRate);
     buffer.getChannelData(0).set(float32);
 
     const source = this.audioContext.createBufferSource();
     source.buffer = buffer;
     source.connect(this.gainNode);
-    this.gainNode.connect(this.audioContext.destination);
+    source.onended = () => {
+      source.disconnect();
+    };
 
     const startTime = Math.max(this.nextPlayTime, this.audioContext.currentTime);
     source.start(startTime);
@@ -44,6 +53,6 @@ export class PCMPlayer {
   }
 
   close() {
-    this.audioContext.close();
+    return this.audioContext.close();
   }
 }

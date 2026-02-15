@@ -14,8 +14,13 @@ class FakeAudioBuffer {
 class FakeSource {
   constructor() {
     this.startedAt = null;
+    this.disconnected = false;
+    this.onended = null;
   }
   connect() {}
+  disconnect() {
+    this.disconnected = true;
+  }
   start(t) {
     this.startedAt = t;
   }
@@ -24,6 +29,10 @@ class FakeSource {
 class FakeAudioContext {
   constructor() {
     this.currentTime = 1.0;
+    this.state = "running";
+    this.destination = {};
+    this.resumeCalled = false;
+    this.closeCalled = false;
   }
   createBuffer(channels, length, sampleRate) {
     this.lastBufferArgs = { channels, length, sampleRate };
@@ -34,7 +43,22 @@ class FakeAudioContext {
     return this.lastSource;
   }
   createGain() {
-    return { connect() {} };
+    this.gainNode = {
+      connect: (destination) => {
+        this.gainConnectCount = (this.gainConnectCount ?? 0) + 1;
+        this.gainConnectDestination = destination;
+      },
+    };
+    return this.gainNode;
+  }
+  resume() {
+    this.resumeCalled = true;
+    this.state = "running";
+    return Promise.resolve();
+  }
+  close() {
+    this.closeCalled = true;
+    return Promise.resolve("closed");
   }
 }
 
@@ -66,5 +90,37 @@ describe("PCMPlayer", () => {
     const t1 = player.playChunk(float32);
     const t2 = player.playChunk(float32);
     expect(t2).toBeGreaterThanOrEqual(t1);
+  });
+
+  it("connects gain node once in constructor", () => {
+    expect(player.audioContext.gainConnectCount).toBe(1);
+    expect(player.audioContext.gainConnectDestination).toBe(player.audioContext.destination);
+  });
+
+  it("disconnects source on ended", () => {
+    const float32 = new Float32Array(2205);
+    player.playChunk(float32);
+    expect(player.audioContext.lastSource.onended).toBeTypeOf("function");
+    player.audioContext.lastSource.onended();
+    expect(player.audioContext.lastSource.disconnected).toBe(true);
+  });
+
+  it("resumes audio context when suspended", () => {
+    player.audioContext.state = "suspended";
+    const float32 = new Float32Array(2205);
+    player.playChunk(float32);
+    expect(player.audioContext.resumeCalled).toBe(true);
+  });
+
+  it("close returns AudioContext close promise", async () => {
+    const result = await player.close();
+    expect(result).toBe("closed");
+    expect(player.audioContext.closeCalled).toBe(true);
+  });
+
+  it("throws if AudioContext is missing", () => {
+    expect(() => new PCMPlayer({ sampleRate: 22050, AudioContextImpl: null })).toThrow(
+      "AudioContext is not available"
+    );
   });
 });
