@@ -94,7 +94,8 @@ class WebSocketClient {
     sendAudio(audioBase64) {
         const message = {
             type: 'audio',
-            data: audioBase64
+            audio: audioBase64,
+            timestamp: Date.now()
         };
 
         this.send(message);
