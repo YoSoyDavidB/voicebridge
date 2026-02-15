@@ -15,7 +15,7 @@ export class WebSocketClient {
         this.onError = null;
         this.isReady = false;
         this.readyResolve = null;
-        this.pcmPlayer = new PCMPlayer({ sampleRate: 22050 });
+        this._pcmPlayer = new PCMPlayer({ sampleRate: 22050 });
     }
 
     /**
@@ -158,7 +158,7 @@ export class WebSocketClient {
                 case 'audio':
                     // Handle audio response from server
                     console.log('[WebSocket] Received audio from server');
-                    this.pcmPlayer.enqueue(message.data);
+                    this._pcmPlayer.enqueue(message.data);
                     break;
 
                 default:

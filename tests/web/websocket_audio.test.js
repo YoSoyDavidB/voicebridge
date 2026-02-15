@@ -30,7 +30,7 @@ describe("WebSocketClient audio handling", () => {
     );
     const client = new WebSocketClient();
     const enqueue = vi.fn();
-    client.pcmPlayer = { enqueue };
+    client._pcmPlayer = { enqueue };
 
     client.handleMessage(JSON.stringify({ type: "audio", data: "Zm9v" }));
 
