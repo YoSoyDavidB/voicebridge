@@ -16,8 +16,17 @@ def test_cli_wires_local_output(monkeypatch) -> None:
     fake_output.start.assert_called_once()
 
 
-def test_log_latency_formats_output() -> None:
+def test_log_latency_formats_output(monkeypatch) -> None:
+    logger = MagicMock()
+    monkeypatch.setattr("structlog.get_logger", lambda: logger)
+
     msg = log_latency("stt", 123.4)
+
+    logger.info.assert_called_once_with(
+        "latency",
+        stage="stt",
+        latency_ms=123.4,
+    )
     assert "stt" in msg
     assert "123.4" in msg
 

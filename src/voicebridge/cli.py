@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+
+import structlog
 import os
 
 from pydantic import ValidationError
@@ -12,7 +14,13 @@ from voicebridge.core.models import TTSAudioResult
 
 
 def log_latency(stage: str, latency_ms: float) -> str:
-    return f"[Latency] {stage}={latency_ms:.1f}ms"
+    msg = f"[Latency] {stage}={latency_ms:.1f}ms"
+    structlog.get_logger().info(
+        "latency",
+        stage=stage,
+        latency_ms=latency_ms,
+    )
+    return msg
 
 
 def create_cli_pipeline() -> PipelineOrchestrator:
