@@ -177,9 +177,12 @@ class ElevenLabsTTSClient:
                     response_text = await self._ws.recv()
                     response = json.loads(response_text)
 
+                    print(f"[TTS] ↩️ Response: isFinal={response.get('isFinal', False)}, has_audio={bool(response.get('audio'))}")
+
                     # Parse and forward audio result
                     audio_result = await self._parse_elevenlabs_response(response, start_time)
                     if audio_result is not None:
+                        print(f"[TTS] ✉️ Sending {len(audio_result.audio_data)} bytes to output queue")
                         await self._output_queue.put(audio_result)
 
                     # Stop receiving if final chunk
