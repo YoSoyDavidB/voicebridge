@@ -31,6 +31,7 @@ class DeepgramSTTClient:
         language: str,
         model: str,
         sample_rate: int,
+        finalization_timeout_s: float = 2.0,
     ) -> None:
         """Initialize Deepgram STT client.
 
@@ -44,6 +45,7 @@ class DeepgramSTTClient:
         self.language = language
         self.model = model
         self.sample_rate = sample_rate
+        self.finalization_timeout_s = finalization_timeout_s
 
         # State
         self._ws: Any = None
@@ -75,7 +77,7 @@ class DeepgramSTTClient:
         try:
             self._ws = await websockets.connect(
                 url,
-                extra_headers={"Authorization": f"Token {self.api_key}"},
+                additional_headers={"Authorization": f"Token {self.api_key}"},
             )
         except Exception as e:
             raise STTConnectionError(f"Failed to connect to Deepgram: {e}") from e
@@ -152,15 +154,17 @@ class DeepgramSTTClient:
                 start_time = time.monotonic()
                 await self._ws.send(vad_result.audio_data)
 
-                # Receive response
-                response_text = await self._ws.recv()
-                response = json.loads(response_text)
+                # Signal end of stream to finalize transcript
+                await self._ws.send(json.dumps({"type": "CloseStream"}))
 
-                # Parse and forward result
-                transcript = self._parse_deepgram_response(response, start_time)
-                if transcript is not None:
-                    print(f"[STT] 📝 Transcript: \"{transcript.text}\" (confidence={transcript.confidence:.2f})")
-                    await self._output_queue.put(transcript)
+                # Receive responses until final transcript (with timeout)
+                transcript = await self._receive_final_transcript(start_time)
+                if transcript is None:
+                    print("[STT] ⚠️ No final transcript before timeout")
+                    continue
+
+                print(f"[STT] 📝 Transcript: \"{transcript.text}\" (confidence={transcript.confidence:.2f})")
+                await self._output_queue.put(transcript)
 
             except asyncio.TimeoutError:
                 # No VAD results available, continue
@@ -223,3 +227,31 @@ class DeepgramSTTClient:
         self._sequence_number += 1
 
         return result
+
+    async def _receive_final_transcript(self, start_time: float) -> TranscriptResult | None:
+        """Receive Deepgram responses until a final transcript or timeout.
+
+        Args:
+            start_time: Timestamp when audio was sent
+
+        Returns:
+            TranscriptResult if final transcript received, None on timeout
+        """
+        if self._ws is None:
+            return None
+
+        try:
+            while True:
+                response_text = await asyncio.wait_for(
+                    self._ws.recv(),
+                    timeout=self.finalization_timeout_s,
+                )
+                response = json.loads(response_text)
+
+                transcript = self._parse_deepgram_response(response, start_time)
+                if transcript is None:
+                    continue
+
+                return transcript
+        except asyncio.TimeoutError:
+            return None

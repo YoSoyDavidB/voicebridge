@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
+import json
 
 import pytest
 
@@ -57,6 +58,9 @@ class TestDeepgramSTTClientConnection:
 
             # Should have called websockets.connect
             mock_connect.assert_called_once()
+            assert mock_connect.call_args.kwargs.get("additional_headers") == {
+                "Authorization": "Token test_key",
+            }
             assert client._ws is not None
 
     @pytest.mark.asyncio
@@ -172,6 +176,163 @@ class TestDeepgramSTTClientTranscription:
         )
 
         result = client._parse_deepgram_response(deepgram_response, start_time=0.0)
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_emits_transcript_after_interim_results(self) -> None:
+        """Should keep reading until a final transcript is received."""
+        mock_ws = AsyncMock()
+
+        interim_response = {
+            "type": "Results",
+            "is_final": False,
+            "channel": {
+                "alternatives": [
+                    {
+                        "transcript": "hola",
+                        "confidence": 0.4,
+                    }
+                ]
+            },
+        }
+
+        final_response = {
+            "type": "Results",
+            "is_final": True,
+            "speech_final": True,
+            "channel": {
+                "alternatives": [
+                    {
+                        "transcript": "hola mundo",
+                        "confidence": 0.95,
+                    }
+                ]
+            },
+        }
+
+        mock_ws.recv = AsyncMock(side_effect=[
+            json.dumps(interim_response),
+            json.dumps(final_response),
+        ])
+
+        client = DeepgramSTTClient(
+            api_key="test_key",
+            language="es",
+            model="nova-2",
+            sample_rate=16000,
+        )
+        client._ws = mock_ws
+
+        input_queue: asyncio.Queue[VADResult] = asyncio.Queue()
+        output_queue: asyncio.Queue[TranscriptResult] = asyncio.Queue()
+        client.set_input_queue(input_queue)
+        client.set_output_queue(output_queue)
+
+        vad_result = VADResult(
+            audio_data=b"\x00" * 3200,
+            start_timestamp_ms=0.0,
+            end_timestamp_ms=100.0,
+            duration_ms=100.0,
+            confidence=0.9,
+            is_partial=False,
+            sequence_number=0,
+        )
+
+        await input_queue.put(vad_result)
+
+        client._is_running = True
+        task = asyncio.create_task(client._process_loop())
+
+        result = await asyncio.wait_for(output_queue.get(), timeout=1.0)
+
+        client._is_running = False
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+
+        assert result.text == "hola mundo"
+
+    @pytest.mark.asyncio
+    async def test_sends_close_stream_after_audio(self) -> None:
+        """Should send CloseStream after audio to finalize transcript."""
+        mock_ws = AsyncMock()
+
+        final_response = {
+            "type": "Results",
+            "is_final": True,
+            "speech_final": True,
+            "channel": {
+                "alternatives": [
+                    {
+                        "transcript": "hola mundo",
+                        "confidence": 0.95,
+                    }
+                ]
+            },
+        }
+
+        mock_ws.recv = AsyncMock(side_effect=[json.dumps(final_response)])
+
+        client = DeepgramSTTClient(
+            api_key="test_key",
+            language="es",
+            model="nova-2",
+            sample_rate=16000,
+        )
+        client._ws = mock_ws
+
+        input_queue: asyncio.Queue[VADResult] = asyncio.Queue()
+        output_queue: asyncio.Queue[TranscriptResult] = asyncio.Queue()
+        client.set_input_queue(input_queue)
+        client.set_output_queue(output_queue)
+
+        vad_result = VADResult(
+            audio_data=b"\x00" * 3200,
+            start_timestamp_ms=0.0,
+            end_timestamp_ms=100.0,
+            duration_ms=100.0,
+            confidence=0.9,
+            is_partial=False,
+            sequence_number=0,
+        )
+
+        await input_queue.put(vad_result)
+
+        client._is_running = True
+        task = asyncio.create_task(client._process_loop())
+
+        result = await asyncio.wait_for(output_queue.get(), timeout=1.0)
+
+        client._is_running = False
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+
+        assert result.text == "hola mundo"
+
+        mock_ws.send.assert_any_call(vad_result.audio_data)
+        mock_ws.send.assert_any_call(json.dumps({"type": "CloseStream"}))
+
+    @pytest.mark.asyncio
+    async def test_recv_final_transcript_times_out(self) -> None:
+        """Should return None when Deepgram does not respond in time."""
+        mock_ws = AsyncMock()
+
+        async def slow_recv() -> str:
+            await asyncio.sleep(0.05)
+            return json.dumps({"type": "Results", "is_final": False})
+
+        mock_ws.recv = AsyncMock(side_effect=slow_recv)
+
+        client = DeepgramSTTClient(
+            api_key="test_key",
+            language="es",
+            model="nova-2",
+            sample_rate=16000,
+            finalization_timeout_s=0.01,
+        )
+        client._ws = mock_ws
+
+        result = await client._receive_final_transcript(start_time=0.0)
 
         assert result is None
 

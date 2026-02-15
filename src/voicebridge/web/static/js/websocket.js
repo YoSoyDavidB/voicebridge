@@ -105,7 +105,6 @@ class WebSocketClient {
             timestamp: Date.now()
         };
 
-        console.log(`[WebSocket] Sending audio message: ${audioBase64.length} bytes`);
         this.send(message);
     }
 
