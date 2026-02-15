@@ -23,7 +23,10 @@ def create_cli_pipeline() -> PipelineOrchestrator:
             elevenlabs_voice_id="test_voice_id",
         )
     pipeline = PipelineOrchestrator(settings)
-    local_output = LocalSpeakerOutput(sample_rate=22050, channels=1)
+    local_output = LocalSpeakerOutput(
+        sample_rate=settings.tts_output_sample_rate,
+        channels=1,
+    )
     local_output.start()
     pipeline.set_tts_output_callback(local_output.enqueue)
     return pipeline
