@@ -44,6 +44,7 @@ def create_cli_pipeline() -> PipelineOrchestrator:
 
     def _tts_callback(result: TTSAudioResult) -> None:
         log_latency("tts", result.processing_latency_ms)
+        print(f"[Speaker] 🔊 Playing {len(result.audio_data)} bytes (final={result.is_final})")
         local_output.enqueue(result.audio_data)
 
     pipeline.set_tts_output_callback(_tts_callback)
