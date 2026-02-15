@@ -8,9 +8,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+
+from voicebridge.web.audio_bridge import WebAudioBridge
+from voicebridge.web.websocket_handler import WebSocketHandler
 
 # Create FastAPI application instance
 app = FastAPI(
@@ -36,3 +39,49 @@ async def serve_index() -> FileResponse:
 async def health_check() -> dict[str, str]:
     """Health check endpoint for monitoring."""
     return {"status": "healthy"}
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket) -> None:
+    """WebSocket endpoint for real-time audio streaming.
+
+    Handles bidirectional communication between browser and backend:
+    - Receives config, audio, and control messages from browser
+    - Sends status, transcription, and error responses back
+
+    Args:
+        websocket: WebSocket connection from FastAPI
+    """
+    # Accept the WebSocket connection
+    await websocket.accept()
+
+    try:
+        # Create WebAudioBridge and WebSocketHandler instances
+        audio_bridge = WebAudioBridge()
+        handler = WebSocketHandler(audio_bridge)
+
+        # Message processing loop
+        while True:
+            # Receive message from browser
+            message = await websocket.receive_text()
+
+            # Handle message and get response (if any)
+            response = await handler.handle_message(message)
+
+            # Send response if one was returned (audio messages return None)
+            if response is not None:
+                await websocket.send_text(response)
+
+    except Exception as e:
+        # Log error and close connection gracefully
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"WebSocket error: {e}", exc_info=True)
+
+    finally:
+        # Ensure connection is closed
+        try:
+            await websocket.close()
+        except Exception:
+            # Connection might already be closed
+            pass
