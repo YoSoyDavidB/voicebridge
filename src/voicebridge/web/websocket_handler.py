@@ -10,6 +10,7 @@ import logging
 from typing import Any, Optional
 
 from voicebridge.web.audio_bridge import WebAudioBridge
+from voicebridge.web.web_pipeline import WebPipeline
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,16 @@ class WebSocketHandler:
         """
         self._audio_bridge = audio_bridge
         self._config: Optional[dict[str, Any]] = None
+        self._pipeline: Optional[WebPipeline] = None
+        self._audio_output_callback: Optional[callable] = None
+
+    def set_audio_output_callback(self, callback: callable) -> None:
+        """Set callback for sending TTS audio to browser.
+
+        Args:
+            callback: Async function that takes base64 audio string
+        """
+        self._audio_output_callback = callback
 
     async def handle_message(self, message: str) -> Optional[str]:
         """Handle incoming WebSocket message.
@@ -88,17 +99,37 @@ class WebSocketHandler:
         """
         # Store configuration
         self._config = data
-        logger.info("Configuration received and stored")
+        api_keys = data.get("apiKeys", {})
 
-        # TODO: Initialize pipeline with API keys when pipeline integration is ready
-        # For now, just store the config and return ready status
+        logger.info("Configuration received, initializing pipeline...")
 
-        # Return status response
-        return json.dumps({
-            "type": "status",
-            "state": "ready",
-            "message": "System configured and ready"
-        })
+        try:
+            # Stop existing pipeline if any
+            if self._pipeline:
+                await self._pipeline.stop()
+
+            # Create new pipeline with API keys
+            self._pipeline = WebPipeline(api_keys)
+
+            # Set audio output callback
+            if self._audio_output_callback:
+                self._pipeline.set_audio_output_callback(self._audio_output_callback)
+
+            # Start pipeline
+            await self._pipeline.start()
+
+            logger.info("Pipeline initialized and started successfully")
+
+            # Return status response
+            return json.dumps({
+                "type": "status",
+                "state": "ready",
+                "message": "System configured and ready"
+            })
+
+        except Exception as e:
+            logger.error(f"Error initializing pipeline: {e}", exc_info=True)
+            return self._error_response(f"Pipeline initialization error: {e}")
 
     async def _handle_audio(self, data: dict[str, Any]) -> Optional[str]:
         """Handle audio message - decode and process audio data.
@@ -111,11 +142,14 @@ class WebSocketHandler:
 
         Note:
             Requires config to be sent first. Audio is decoded and will be
-            passed to pipeline for processing in future integration.
+            passed to pipeline for processing.
         """
-        # Check if config has been received
+        # Check if config has been received and pipeline is running
         if self._config is None:
             return self._error_response("Configuration required before sending audio")
+
+        if self._pipeline is None:
+            return self._error_response("Pipeline not initialized")
 
         # Get audio data and timestamp
         base64_audio = data.get("audio")
@@ -134,12 +168,12 @@ class WebSocketHandler:
                 f"seq={audio_chunk.sequence_number}"
             )
 
-            # TODO: Pass audio_chunk to pipeline for processing when integration is ready
-            # For now, just decode and log
+            # Send to pipeline for processing
+            await self._pipeline.process_audio_chunk(audio_chunk)
 
         except Exception as e:
-            logger.error(f"Error decoding audio: {e}", exc_info=True)
-            return self._error_response(f"Audio decode error: {e}")
+            logger.error(f"Error processing audio: {e}", exc_info=True)
+            return self._error_response(f"Audio processing error: {e}")
 
         # Audio processing is async - responses come separately from pipeline
         return None
@@ -161,7 +195,10 @@ class WebSocketHandler:
         if action == "stop":
             logger.info("Stop command received")
 
-            # TODO: Stop pipeline processing when integration is ready
+            # Stop pipeline
+            if self._pipeline:
+                await self._pipeline.stop()
+                self._pipeline = None
 
             # Clear configuration
             self._config = None

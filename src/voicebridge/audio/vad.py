@@ -9,6 +9,8 @@ from __future__ import annotations
 from typing import Optional
 
 import asyncio
+import time
+from asyncio import QueueEmpty
 from typing import Any
 
 import numpy as np
@@ -85,7 +87,7 @@ class VADProcessor:
         """Set the queue to read audio chunks from.
 
         Args:
-            queue: Input queue with AudioChunk objects
+            queue: asyncio.Queue with AudioChunk objects
         """
         self._input_queue = queue
 
@@ -116,16 +118,20 @@ class VADProcessor:
         Reads audio chunks from input queue, detects speech,
         and emits VADResult objects to output queue.
         """
+        print(f"[VAD] 🔄 Processing loop started (threshold: {self.threshold:.2f})")
+        chunk_count = 0
+        timeout_count = 0
+
         while self._is_running:
             if self._input_queue is None or self._output_queue is None:
                 break
 
             try:
-                # Get next audio chunk
-                chunk = await asyncio.wait_for(
-                    self._input_queue.get(),
-                    timeout=0.1,
-                )
+                # Try to get chunk without blocking
+                chunk = self._input_queue.get_nowait()
+
+                chunk_count += 1
+                # Debug: removed for performance
 
                 # Detect speech
                 is_speech = self._is_speech(chunk)
@@ -155,8 +161,9 @@ class VADProcessor:
                         await self._output_queue.put(result)
                         self._reset_buffer()
 
-            except asyncio.TimeoutError:
-                # No chunks available, continue
+            except QueueEmpty:
+                # No chunks available, sleep briefly and continue
+                await asyncio.sleep(0.01)  # 10ms
                 continue
 
     def _is_speech(self, chunk: AudioChunk) -> bool:
@@ -185,6 +192,8 @@ class VADProcessor:
 
         # Store probability
         self._speech_probabilities.append(speech_prob)
+
+        # Debug: removed for performance
 
         # Compare against threshold
         return speech_prob >= self.threshold

@@ -60,6 +60,18 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
         audio_bridge = WebAudioBridge()
         handler = WebSocketHandler(audio_bridge)
 
+        # Set callback for sending TTS audio back to browser
+        async def send_audio_to_browser(audio_base64: str) -> None:
+            """Send TTS audio to browser."""
+            import json
+            message = json.dumps({
+                "type": "audio",
+                "data": audio_base64
+            })
+            await websocket.send_text(message)
+
+        handler.set_audio_output_callback(send_audio_to_browser)
+
         # Message processing loop
         while True:
             # Receive message from browser

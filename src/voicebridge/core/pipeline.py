@@ -78,11 +78,12 @@ class PipelineOrchestrator:
         self._start_time = time.monotonic()
 
         # Create queues
-        self._queue_capture_to_vad = asyncio.Queue(maxsize=50)
+        # AudioCapture uses run_coroutine_threadsafe to put items from audio thread
+        self._queue_capture_to_vad = asyncio.Queue(maxsize=500)  # ~15 seconds buffer
         self._queue_vad_to_stt = asyncio.Queue(maxsize=10)
         self._queue_stt_to_translation = asyncio.Queue(maxsize=10)
         self._queue_translation_to_tts = asyncio.Queue(maxsize=10)
-        self._queue_tts_to_output = asyncio.Queue(maxsize=50)
+        self._queue_tts_to_output = asyncio.Queue(maxsize=100)  # More buffer for audio playback
 
         # Create components
         self._audio_capture = AudioCapture(
@@ -132,6 +133,7 @@ class PipelineOrchestrator:
         )
 
         # Connect components with queues
+        print(f"[Pipeline] 🔗 Connecting components with queues")
         self._audio_capture.set_output_queue(self._queue_capture_to_vad)
 
         self._vad.set_input_queue(self._queue_capture_to_vad)
