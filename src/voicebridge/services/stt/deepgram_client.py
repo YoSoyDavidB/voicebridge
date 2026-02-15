@@ -144,7 +144,11 @@ class DeepgramSTTClient:
                 )
 
                 # Debug: Show we received audio
-                print(f"[STT] 🎧 Received audio: {vad_result.duration_ms:.0f}ms")
+                import numpy as np
+                audio_array = np.frombuffer(vad_result.audio_data, dtype=np.int16)
+                max_amplitude = np.abs(audio_array).max() if len(audio_array) > 0 else 0
+                rms = np.sqrt(np.mean(audio_array.astype(np.float32) ** 2)) if len(audio_array) > 0 else 0
+                print(f"[STT] 🎧 Received audio: {vad_result.duration_ms:.0f}ms, {len(vad_result.audio_data)} bytes, max={max_amplitude}, rms={rms:.1f}")
 
                 # Ensure connected
                 if self._ws is None:
