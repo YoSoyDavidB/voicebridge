@@ -163,6 +163,10 @@ class DeepgramSTTClient:
 
                 # Receive responses until final transcript (with timeout)
                 transcript = await self._receive_final_transcript(start_time)
+
+                # Close the WebSocket after receiving response (it's one-shot per utterance)
+                self._ws = None
+
                 if transcript is None:
                     print("[STT] ⚠️ No final transcript before timeout")
                     continue
