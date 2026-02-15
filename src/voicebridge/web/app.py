@@ -73,9 +73,16 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
         handler.set_audio_output_callback(send_audio_to_browser)
 
         # Message processing loop
+        message_count = 0
         while True:
             # Receive message from browser
             message = await websocket.receive_text()
+            message_count += 1
+
+            # Log every message (temporary debug)
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"[WebSocket] Message #{message_count} received, length={len(message)}")
 
             # Handle message and get response (if any)
             response = await handler.handle_message(message)
