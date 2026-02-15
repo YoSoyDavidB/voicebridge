@@ -41,8 +41,12 @@ Physical Mic → Audio Capture → VAD → STT (Deepgram) → Translation (GPT-4
 
 ## 🚀 Quick Start
 
-### Installation
+### Installation Guides
 
+**Windows Users (Recommended):**
+📘 **[Complete Windows Setup Guide](docs/WINDOWS_SETUP.md)** - Step-by-step guide for Windows 10/11
+
+**macOS/Linux Users:**
 ```bash
 # Clone the repository
 git clone https://github.com/YoSoyDavidB/voicebridge.git
@@ -50,9 +54,6 @@ cd voicebridge
 
 # Install dependencies and VoiceBridge CLI
 pip install -e .
-
-# Install development dependencies
-make install-dev
 
 # Copy environment template
 cp .env.example .env
